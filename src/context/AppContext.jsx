@@ -28,6 +28,8 @@ export function AppProvider({ children }) {
   // ---------- 鉴权 ----------
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const userId = session?.user?.id || null
+  const isLoggedIn = !!session
 
   // ---------- 导航 ----------
   const [page, setPageState] = useState('home')
@@ -169,9 +171,6 @@ export function AppProvider({ children }) {
       cancelled = true
     }
   }, [session])
-
-  const userId = session?.user?.id || null
-  const isLoggedIn = !!session
 
   // ---------- 导航操作 ----------
   const resetNav = useCallback(() => {
