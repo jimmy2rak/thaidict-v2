@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Check } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
-import { getUserSettings, saveUserSettings } from '../../lib/db/index.js'
+import { getUserSettings, saveUserSettings, CHINESE_FONTS, THAI_FONTS } from '../../lib/db/index.js'
 import { IconButton, Card, Spinner } from '../../components/UIComponents.jsx'
 
 const COLOR_MODES = [
@@ -21,11 +21,13 @@ const DIRS = [
 
 export default function SettingsSection({ onClose }) {
   const app = useApp()
-  const { userId, colorMode, setColorMode, toast } = app
+  const { userId, colorMode, setColorMode, toast, setChineseFont, setThaiFont } = app
   const [loading, setLoading] = useState(true)
   const [rate, setRate] = useState(1.0)
   const [fontSize, setFontSize] = useState('medium')
   const [dir, setDir] = useState('th_to_zh')
+  const [chineseFont, setChineseFontLocal] = useState('noto_sans_sc')
+  const [thaiFont, setThaiFontLocal] = useState('noto_sans_thai')
 
   useEffect(() => {
     if (!userId) return setLoading(false)
@@ -33,6 +35,8 @@ export default function SettingsSection({ onClose }) {
       setRate(s.speech_rate ?? 1.0)
       setFontSize(s.font_size || 'medium')
       setDir(s.dict_direction || 'th_to_zh')
+      setChineseFontLocal(s.chinese_font || 'noto_sans_sc')
+      setThaiFontLocal(s.thai_font || 'noto_sans_thai')
       setLoading(false)
     })
   }, [userId])
@@ -67,6 +71,32 @@ export default function SettingsSection({ onClose }) {
         </Card>
 
         <Card style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'var(--c-p600)', marginBottom: 8 }}>中文字体</div>
+          <FontSelect
+            options={CHINESE_FONTS}
+            value={chineseFont}
+            onChange={(v) => {
+              setChineseFontLocal(v)
+              setChineseFont(v)
+              save({ chinese_font: v })
+            }}
+          />
+        </Card>
+
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'var(--c-p600)', marginBottom: 8 }}>泰语字体</div>
+          <FontSelect
+            options={THAI_FONTS}
+            value={thaiFont}
+            onChange={(v) => {
+              setThaiFontLocal(v)
+              setThaiFont(v)
+              save({ thai_font: v })
+            }}
+          />
+        </Card>
+
+        <Card style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 13, color: 'var(--c-p600)', marginBottom: 8 }}>翻译方向</div>
           <Seg options={DIRS} value={dir} onChange={(v) => { setDir(v); save({ dict_direction: v }) }} />
         </Card>
@@ -95,6 +125,29 @@ export default function SettingsSection({ onClose }) {
         </Card>
       </div>
     </div>
+  )
+}
+
+function FontSelect({ options, value, onChange }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{
+        width: '100%',
+        padding: '10px 12px',
+        borderRadius: 10,
+        border: '1px solid var(--c-p200)',
+        background: 'var(--c-bg)',
+        color: 'var(--c-p800)',
+        fontSize: 14,
+        outline: 'none',
+      }}
+    >
+      {options.map((o) => (
+        <option key={o.key} value={o.key}>{o.label}</option>
+      ))}
+    </select>
   )
 }
 

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js'
 import {
   getWordByThai,
-  saveCommunityWord,
+  createPendingApproval,
   recordWordLookup,
   getBookmarks,
   getStreak,
@@ -10,6 +10,11 @@ import {
   getWordBookProgress,
   getWordBooks,
   checkAchievements,
+  getUserSettings,
+  CHINESE_FONTS,
+  THAI_FONTS,
+  getFontFamily,
+  getUserRole,
 } from '../lib/db/index.js'
 import { callAiProxy } from '../lib/ai-proxy.js'
 import { transformWordData, transformCommunityWord } from '../lib/utils.js'
@@ -45,6 +50,13 @@ export function AppProvider({ children }) {
   const [colorMode, setColorModeState] = useState(
     () => localStorage.getItem('thaidict-color-mode') || 'light'
   )
+
+  // ---------- 字体 ----------
+  const [chineseFont, setChineseFont] = useState('noto_sans_sc')
+  const [thaiFont, setThaiFont] = useState('noto_sans_thai')
+
+  // ---------- 角色权限 ----------
+  const [userRole, setUserRole] = useState({ role: 'user', permissions: [] })
 
   // ---------- Toast ----------
   const [toastMsg, setToastMsg] = useState(null)
@@ -98,6 +110,37 @@ export function AppProvider({ children }) {
       return () => mq.removeEventListener('change', apply)
     }
   }, [colorMode])
+
+  // 加载角色权限
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    getUserRole(userId).then((r) => {
+      if (cancelled) return
+      setUserRole(r || { role: 'user', permissions: [] })
+    })
+    return () => { cancelled = true }
+  }, [userId])
+
+  // 加载用户设置（字体、方向等），用于全局生效
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    getUserSettings(userId).then((s) => {
+      if (cancelled) return
+      if (s.chinese_font) setChineseFont(s.chinese_font)
+      if (s.thai_font) setThaiFont(s.thai_font)
+    })
+    return () => { cancelled = true }
+  }, [userId])
+
+  // 应用字体
+  useEffect(() => {
+    const zhFamily = getFontFamily(chineseFont, CHINESE_FONTS[0].family)
+    const thFamily = getFontFamily(thaiFont, THAI_FONTS[1].family)
+    document.documentElement.style.setProperty('--zh-font', zhFamily)
+    document.documentElement.style.setProperty('--th-font', thFamily)
+  }, [chineseFont, thaiFont])
 
   // 登录后加载分词词典
   useEffect(() => {
@@ -214,7 +257,7 @@ export function AppProvider({ children }) {
     [dbWordData, generatedWords, navigateTo]
   )
 
-  // ---------- AI 生成词条 ----------
+  // ---------- AI 生成词条（先进入待审批） ----------
   const handleGenerated = useCallback(
     async (word, zhHint) => {
       const { data, error } = await callAiProxy({ word, zhHint })
@@ -225,9 +268,9 @@ export function AppProvider({ children }) {
       const transformed = transformCommunityWord(data)
       setGeneratedWords((prev) => ({ ...prev, [word]: transformed }))
       try {
-        await saveCommunityWord(data, userId, zhHint)
+        await createPendingApproval({ type: 'word', payload: { ...data, zh_hint: zhHint }, requestedBy: userId })
       } catch (e) {
-        console.error('[saveCommunityWord]', e)
+        console.error('[createPendingApproval]', e)
       }
       setUnknownWord(null)
       navigateTo({ type: 'detail', word })
@@ -290,6 +333,13 @@ export function AppProvider({ children }) {
     // theme
     colorMode,
     setColorMode,
+    chineseFont,
+    setChineseFont,
+    thaiFont,
+    setThaiFont,
+    // role
+    userRole,
+    setUserRole,
     // actions
     handleWordTap,
     handleGenerated,

@@ -61,7 +61,7 @@ export async function getFolderWords(folderId) {
   const { data } = await safeQuery(
     supabase.from('user_folder_words').select('word').eq('folder_id', folderId)
   )
-  return (data || []).map((r) => r.word)
+  return (data || []).map((r) => ({ word: r.word }))
 }
 
 export async function getFolderSentences(folderId) {

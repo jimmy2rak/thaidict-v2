@@ -40,11 +40,15 @@ export default function WordDetailPage({ word }) {
 
   const toggleBookmark = async () => {
     if (!userId) return app.toast('请先登录')
-    if (bookmarked) await removeBookmark(userId, word)
-    else await addBookmark(userId, word)
-    setBookmarked(!bookmarked)
-    if (!bookmarked) {
+    if (bookmarked) {
+      await removeBookmark(userId, word)
+      setBookmarked(false)
+    } else {
+      await addBookmark(userId, word)
+      setBookmarked(true)
       await checkAndToastAchievements()
+      // 收藏后自动弹出单词夹选择/新建菜单
+      openFolder()
     }
   }
 

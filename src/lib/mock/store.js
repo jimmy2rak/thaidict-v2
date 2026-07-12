@@ -57,8 +57,15 @@ export function seedIfNeeded() {
     })
     setGlobal('word_books', presetWordBooks())
     setGlobal('achievements_defs', presetAchievements())
+    setGlobal('users', presetUsers())
+    setGlobal('user_roles', presetRoles())
+    setGlobal('pending_approvals', [])
     localStorage.setItem(PREFIX + 'seeded', '1')
   }
+  // 已有数据迁移：确保新全局集合存在
+  if (getGlobal('users', null) === null) setGlobal('users', presetUsers())
+  if (getGlobal('user_roles', null) === null) setGlobal('user_roles', presetRoles())
+  if (getGlobal('pending_approvals', null) === null) setGlobal('pending_approvals', [])
 }
 
 function presetWordBooks() {
@@ -75,6 +82,22 @@ function presetAchievements() {
     { key: 'bookmark_100', name: '百词斩', desc: '收藏 100 个词', icon: 'bookmark' },
     { key: 'book_done', name: '学以致用', desc: '完成一本单词书', icon: 'award' },
     { key: 'practice_10', name: '初露锋芒', desc: '完成 10 次练习', icon: 'target' },
+  ]
+}
+
+function presetUsers() {
+  return [
+    { id: 'mock-user-001', email: 'demo@thaidict.local', username: '演示用户', created_at: new Date().toISOString() },
+    { id: 'mock-user-002', email: 'alice@example.com', username: 'Alice', created_at: new Date().toISOString() },
+    { id: 'mock-user-003', email: 'bob@example.com', username: 'Bob', created_at: new Date().toISOString() },
+  ]
+}
+
+function presetRoles() {
+  return [
+    { user_id: 'mock-user-001', role: 'super_admin', permissions: ['all'], updated_at: new Date().toISOString() },
+    { user_id: 'mock-user-002', role: 'user', permissions: [], updated_at: new Date().toISOString() },
+    { user_id: 'mock-user-003', role: 'admin', permissions: ['approve_entries'], updated_at: new Date().toISOString() },
   ]
 }
 

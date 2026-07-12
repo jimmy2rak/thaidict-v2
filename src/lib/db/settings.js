@@ -8,6 +8,8 @@ const DEFAULTS = {
   color_mode: 'light',
   speech_rate: 1.0,
   font_size: 'medium',
+  chinese_font: 'noto_sans_sc',
+  thai_font: 'noto_sans_thai',
   reminder_enabled: false,
   reminder_time: '20:00',
   reminder_frequency: 'daily',
@@ -15,6 +17,21 @@ const DEFAULTS = {
   webdav_user: '',
   webdav_pass_enc: '',
   default_api_id: null,
+}
+
+export const CHINESE_FONTS = [
+  { key: 'noto_sans_sc', label: 'Noto Sans SC', family: "'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif" },
+  { key: 'noto_serif_sc', label: 'Noto Serif SC', family: "'Noto Serif SC', serif" },
+]
+export const THAI_FONTS = [
+  { key: 'sarabun', label: 'Sarabun', family: "'Sarabun', sans-serif" },
+  { key: 'noto_sans_thai', label: 'Noto Sans Thai', family: "'Noto Sans Thai', 'Sarabun', sans-serif" },
+  { key: 'charm', label: 'Charm', family: "'Charm', 'Sarabun', cursive" },
+]
+
+export function getFontFamily(fontKey, fallback) {
+  const all = [...CHINESE_FONTS, ...THAI_FONTS]
+  return all.find((f) => f.key === fontKey)?.family || fallback
 }
 
 export async function getUserSettings(userId) {
