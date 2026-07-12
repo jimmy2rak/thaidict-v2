@@ -1,0 +1,21 @@
+{
+  "name": "词笺 — 中泰双语智能词典",
+  "short_name": "词笺",
+  "description": "中泰双语智能词典",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F4",
+  "theme_color": "#FAF7F4",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
