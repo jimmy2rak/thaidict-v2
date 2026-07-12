@@ -124,3 +124,77 @@ export async function searchCommunityWords(query) {
   )
   return (data || []).map(transformCommunityWord)
 }
+
+// 查询某词的汉语释义数组（用于详情页近反义词/学习者建议括号展示，需求 #5）。
+// 命中词典或社区词库时返回含义字符串数组；未命中返回 null（不显示括号）。
+export async function getWordMeanings(word) {
+  if (!word) return null
+  if (!isSupabaseConfigured) {
+    const dictHit = getGlobal('dictionary', []).find((r) => r.word === word)
+    if (dictHit) {
+      const arr = (dictHit.senses || []).map((s) => s.meaning).filter(Boolean)
+      if (arr.length) return arr
+    }
+    const commHit = getGlobal('community_words', []).find((r) => r.word === word)
+    if (commHit) {
+      const arr = (commHit.senses || []).map((s) => s.meaning).filter(Boolean)
+      if (arr.length) return arr
+    }
+    return null
+  }
+  if (!supabase) return null
+  const { data } = await safeQuery(
+    supabase.from('dictionary_full').select('senses').eq('word', word).maybeSingle()
+  )
+  if (data && data.senses) {
+    const arr = (data.senses || []).map((s) => s.meaning).filter(Boolean)
+    if (arr.length) return arr
+  }
+  const { data: c } = await safeQuery(
+    supabase.from('community_words').select('senses').eq('word', word).maybeSingle()
+  )
+  if (c && c.senses) {
+    const arr = (c.senses || []).map((s) => s.meaning).filter(Boolean)
+    if (arr.length) return arr
+  }
+  return null
+}
+
+// 将标准格式词条写入「主词典」（需求 #3：管理员审批通过后自动入库）。
+// mock 写入 dictionary 全局集合；real 写入 dictionary_full 表。
+export async function addDictionaryWord(entry) {
+  if (!entry || !entry.word) return null
+  const row = normalizeDictionaryRow(entry)
+  if (!isSupabaseConfigured) {
+    const dict = getGlobal('dictionary', [])
+    const idx = dict.findIndex((r) => r.word === row.word)
+    if (idx >= 0) dict[idx] = { ...dict[idx], ...row }
+    else dict.push(row)
+    setGlobal('dictionary', dict)
+    return row
+  }
+  if (!supabase) return null
+  const { data, error } = await safeQuery(
+    supabase.from('dictionary_full').upsert(row).select().single()
+  )
+  if (error) {
+    console.error('[addDictionaryWord]', error.message)
+    return null
+  }
+  return data
+}
+
+function normalizeDictionaryRow(entry) {
+  const senses = Array.isArray(entry.senses) ? entry.senses : []
+  return {
+    word: entry.word,
+    romanization: entry.romanization || '',
+    senses,
+    synonyms: entry.synonyms || [],
+    antonyms: entry.antonyms || [],
+    learner_associations: entry.learner_associations || [],
+    sense_count: senses.length,
+    enrichment_status: 'enriched',
+    freq_ttc: entry.freq_ttc || 0,
+  }
+}

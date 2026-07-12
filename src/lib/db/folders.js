@@ -5,8 +5,10 @@ import { getUserColl, setUserColl } from '../mock/store.js'
 
 function mockFolders(userId) {
   const folders = getUserColl(userId, 'folders', [])
-  const words = getUserColl(userId, 'folder_words', [])
-  const sentences = getUserColl(userId, 'folder_sentences', [])
+  // 注意：addWordToFolder / getFolderWords 写/读的是全局键 '__'（mock 下共享），
+  // 这里必须用同一键名统计，否则计数恒为 0（修复需求 #1）。
+  const words = getUserColl('__', 'folder_words', [])
+  const sentences = getUserColl('__', 'folder_sentences', [])
   return folders.map((f) => ({
     ...f,
     wordCount: words.filter((w) => w.folder_id === f.id).length,

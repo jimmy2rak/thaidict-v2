@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Search, Volume2, RefreshCw, Flame, BookA, Star, CalendarDays, ChevronRight } from 'lucide-react'
+import { Search, Volume2, RefreshCw, Flame, BookA, Star, CalendarDays, ChevronRight, Sparkles } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import {
   searchWords,
@@ -106,7 +106,13 @@ export default function HomePage() {
       </div>
 
       {query.trim() ? (
-        <SearchResults results={results} onTap={handleWordTap} searching={searching} />
+        <SearchResults
+          results={results}
+          onTap={handleWordTap}
+          searching={searching}
+          query={query}
+          onAiSearch={(q) => navigateTo({ type: 'unknown', word: q })}
+        />
       ) : (
         <>
           {/* 每日一词 */}
@@ -151,9 +157,8 @@ function Stat({ icon: Icon, value, label, color }) {
   )
 }
 
-function SearchResults({ results, onTap, searching }) {
+function SearchResults({ results, onTap, searching, query, onAiSearch }) {
   if (searching && results.length === 0) return <EmptyState icon={<Spinner />} text="搜索中…" />
-  if (results.length === 0) return <EmptyState icon="🔍" text="没有找到相关词条" />
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {results.map((r) => (
@@ -170,6 +175,23 @@ function SearchResults({ results, onTap, searching }) {
           </div>
         </Card>
       ))}
+      {!searching && results.length === 0 && (
+        <EmptyState icon="🔍" text="没有找到相关词条" />
+      )}
+      {/* 需求 #3：检索结果后追加 AI 搜索入口（生成内容将进入待审批） */}
+      {!searching && query?.trim() && (
+        <button
+          onClick={() => onAiSearch(query.trim())}
+          style={{
+            marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            width: '100%', padding: '13px', borderRadius: 12, border: '1px dashed var(--c-teal)',
+            color: 'var(--c-teal)', background: 'color-mix(in srgb, var(--c-teal) 8%, transparent)',
+            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          <Sparkles size={16} /> 未找到词语？AI 搜索「{query.trim()}」
+        </button>
+      )}
     </div>
   )
 }

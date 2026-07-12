@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Check, X, Sparkles } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
 import {
-  listPendingApprovals, approveApproval, rejectApproval, saveCommunityWord,
+  listPendingApprovals, approveApproval, rejectApproval, saveCommunityWord, addDictionaryWord,
   hasPermission, isSuperAdmin,
 } from '../../lib/db/index.js'
 import { Card, IconButton, Spinner, Badge } from '../../components/UIComponents.jsx'
@@ -27,11 +27,15 @@ export default function ApprovalCenterSection({ onClose }) {
     const a = items.find((x) => x.id === id)
     if (!a) return
     await approveApproval(id, userId)
-    // 批准后写入社区词库（后续可在此加入腾讯翻译君 API 校验）
+    // 批准后：写入社区词库（贡献记录）+ 按标准格式自动加入主词典（需求 #3）
     if (a.type === 'word') {
       const { zh_hint, ...entry } = a.payload || {}
-      await saveCommunityWord(entry, a.requested_by, zh_hint || '')
+      if (entry.word) {
+        await saveCommunityWord(entry, a.requested_by, zh_hint || '')
+        await addDictionaryWord(entry)
+      }
     }
+    // 后续可在此加入腾讯翻译君 API 校验 AI 词条是否与实际一致
     toast('已批准入库')
     setDetail(null)
     load()

@@ -81,10 +81,11 @@ export function Btn({ children, onClick, variant = 'primary', disabled, style, t
   )
 }
 
-export function IconButton({ onClick, title, active, children, style }) {
+export function IconButton({ onClick, title, active, children, style, disabled }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       title={title}
       aria-label={title}
       style={{
@@ -97,7 +98,8 @@ export function IconButton({ onClick, title, active, children, style }) {
         background: active ? 'color-mix(in srgb, var(--c-teal) 16%, transparent)' : 'transparent',
         color: active ? 'var(--c-teal)' : 'var(--c-p600)',
         border: 'none',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.35 : 1,
         ...style,
       }}
     >

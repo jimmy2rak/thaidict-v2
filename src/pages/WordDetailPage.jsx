@@ -9,6 +9,7 @@ import {
   addWordToFolder,
   createFolder,
   recordWordLookup,
+  getWordMeanings,
 } from '../lib/db/index.js'
 import { transformWordData } from '../lib/utils.js'
 import { speak } from '../utils/tts.js'
@@ -30,6 +31,7 @@ export default function WordDetailPage({ word }) {
   const [newFolder, setNewFolder] = useState('')
   const [showMorph, setShowMorph] = useState(false)
   const [showNote, setShowNote] = useState(false)
+  const [meaningMap, setMeaningMap] = useState({})
 
   useEffect(() => {
     if (userId && word) {
@@ -37,6 +39,27 @@ export default function WordDetailPage({ word }) {
       recordWordLookup(userId, word)
     }
   }, [userId, word])
+
+  // 近/反义词、学习者建议中单词的汉语释义（需求 #5：查不到则不显示括号）
+  useEffect(() => {
+    if (!data) return
+    const words = new Set()
+    ;(data.synonyms || []).forEach((s) => s.word && words.add(s.word))
+    ;(data.antonyms || []).forEach((s) => s.word && words.add(s.word))
+    ;(data.learnerAssociations || []).forEach((la) => (la.words || []).forEach((w) => w && words.add(w)))
+    if (words.size === 0) {
+      setMeaningMap({})
+      return
+    }
+    let cancelled = false
+    Promise.all([...words].map(async (w) => [w, await getWordMeanings(w)])).then((pairs) => {
+      if (cancelled) return
+      const m = {}
+      pairs.forEach(([w, arr]) => { m[w] = arr })
+      setMeaningMap(m)
+    })
+    return () => { cancelled = true }
+  }, [word, data])
 
   const toggleBookmark = async () => {
     if (!userId) return app.toast('请先登录')
@@ -85,7 +108,7 @@ export default function WordDetailPage({ word }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* 顶栏 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
-        <IconButton onClick={goBack} disabled={navStack.length === 0} title="返回"><ArrowLeft size={20} /></IconButton>
+        <IconButton onClick={goBack} title="返回"><ArrowLeft size={20} /></IconButton>
         <IconButton onClick={goForward} disabled={navForward.length === 0} title="前进"><ArrowRight size={20} /></IconButton>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>词条详情</div>
         <IconButton onClick={toggleBookmark} active={bookmarked} title="收藏"><Star size={20} fill={bookmarked ? 'var(--c-amber)' : 'none'} color={bookmarked ? 'var(--c-amber)' : 'var(--c-p600)'} /></IconButton>
@@ -105,13 +128,23 @@ export default function WordDetailPage({ word }) {
         {data.senses.map((s, i) => (
           <Card key={i} style={{ marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              {data.senses.length > 1 && (
+                <span style={{ minWidth: 20, height: 20, borderRadius: '50%', background: 'var(--c-teal)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+              )}
               <Badge color="var(--c-teal)">{s.pos || '—'}</Badge>
               <span style={{ fontSize: 15, color: 'var(--c-p800)', fontWeight: 500 }}>{s.meaning}</span>
             </div>
             {s.examples?.map((ex, j) => (
-              <div key={j} style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 4, fontFamily: 'var(--th-font)' }}>
+              <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--c-p600)', marginTop: 4, fontFamily: 'var(--th-font)' }}>
                 <span style={{ cursor: 'pointer' }} onClick={() => handleWordTap(ex.thai)}>{ex.thai}</span>
-                <span style={{ color: 'var(--c-p500)', marginLeft: 6 }}>{ex.zh}</span>
+                <span style={{ color: 'var(--c-p500)', marginLeft: 2 }}>{ex.zh}</span>
+                <button
+                  onClick={() => speak(ex.thai, { rate })}
+                  title="朗读例句"
+                  style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, background: 'var(--c-p100)', border: 'none', color: 'var(--c-p700)', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  <Volume2 size={15} />
+                </button>
               </div>
             ))}
           </Card>
@@ -125,7 +158,7 @@ export default function WordDetailPage({ word }) {
                 <div style={{ fontSize: 12, color: 'var(--c-teal)', marginBottom: 4 }}>近义词</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {data.synonyms.map((s, i) => (
-                    <button key={i} onClick={() => handleWordTap(s.word)} style={relStyle('var(--c-teal)')}>{s.word}</button>
+                    <RelWord key={i} word={s.word} color="var(--c-teal)" meaning={meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
                   ))}
                 </div>
               </div>
@@ -135,7 +168,7 @@ export default function WordDetailPage({ word }) {
                 <div style={{ fontSize: 12, color: 'var(--c-rose)', marginBottom: 4 }}>反义词</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {data.antonyms.map((s, i) => (
-                    <button key={i} onClick={() => handleWordTap(s.word)} style={relStyle('var(--c-rose)')}>{s.word}</button>
+                    <RelWord key={i} word={s.word} color="var(--c-rose)" meaning={meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
                   ))}
                 </div>
               </div>
@@ -149,7 +182,7 @@ export default function WordDetailPage({ word }) {
             <div style={{ fontSize: 12, color: 'var(--c-gold)', marginBottom: 4 }}>{la.category}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {la.words.map((w, j) => (
-                <button key={j} onClick={() => handleWordTap(w)} style={relStyle('var(--c-gold)')}>{w}</button>
+                <RelWord key={j} word={w} color="var(--c-gold)" meaning={meaningMap[w]} onClick={() => handleWordTap(w)} />
               ))}
             </div>
           </Card>
@@ -196,6 +229,17 @@ const relStyle = (c) => ({
   cursor: 'pointer',
   fontFamily: 'var(--th-font)',
 })
+// 近反义词/学习者建议单词：查到释义时附加中文括号（多义用分号分隔），查不到则不显示括号（需求 #5）
+function RelWord({ word, color, meaning, onClick }) {
+  return (
+    <button onClick={onClick} style={relStyle(color)}>
+      <span style={{ fontFamily: 'var(--th-font)' }}>{word}</span>
+      {meaning && meaning.length > 0 && (
+        <span style={{ fontFamily: 'var(--zh-font)', fontSize: 12 }}>（{meaning.join('；')}）</span>
+      )}
+    </button>
+  )
+}
 const actionBtn = (c) => ({
   flex: 1,
   display: 'flex',

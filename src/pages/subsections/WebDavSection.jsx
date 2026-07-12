@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, CloudUpload, Lock, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, CloudUpload, Lock, ShieldCheck, Download, Upload } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
 import { getUserSettings, saveUserSettings } from '../../lib/db/index.js'
 import { IconButton, Card, Spinner, Btn } from '../../components/UIComponents.jsx'
+import {
+  webdavCategories, gatherExportData, downloadJson, uploadToWebdav, saveLocalBackup, fileNameFor, categoryLabel,
+} from '../../lib/webdav.js'
 
 const enc = new TextEncoder()
 const dec = new TextDecoder()
@@ -48,6 +51,8 @@ export default function WebDavSection({ onClose }) {
   const [hasStored, setHasStored] = useState(false)
   const [saving, setSaving] = useState(false)
   const [unsupported, setUnsupported] = useState(false)
+  const [picker, setPicker] = useState(null) // 'export' | 'upload' | null
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (!userId) return setLoading(false)
@@ -87,6 +92,42 @@ export default function WebDavSection({ onClose }) {
     toast('WebDAV 配置已保存（模拟上传成功）')
   }
 
+  const doExport = async (category) => {
+    setBusy(true)
+    try {
+      const payload = await gatherExportData(category, userId)
+      if (!payload) return toast('暂无数据可导出')
+      downloadJson(fileNameFor(category), payload)
+      toast(`已导出${categoryLabel(category)}`)
+    } catch (e) {
+      toast('导出失败：' + e.message)
+    } finally {
+      setBusy(false)
+      setPicker(null)
+    }
+  }
+
+  const doUpload = async (category) => {
+    setBusy(true)
+    try {
+      const payload = await gatherExportData(category, userId)
+      if (!payload) return toast('暂无数据可上传')
+      const res = await uploadToWebdav(url, user, pass, fileNameFor(category), payload)
+      if (res.ok) {
+        toast(`已上传${categoryLabel(category)}到 WebDAV`)
+      } else {
+        // mock 回退：本地模拟备份，保证功能可演示
+        saveLocalBackup(fileNameFor(category), payload)
+        toast(`已模拟上传${categoryLabel(category)}（真实模式写入 WebDAV：${res.error}）`)
+      }
+    } catch (e) {
+      toast('上传失败：' + e.message)
+    } finally {
+      setBusy(false)
+      setPicker(null)
+    }
+  }
+
   if (loading) {
     return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spinner /></div>
   }
@@ -120,13 +161,53 @@ export default function WebDavSection({ onClose }) {
           <CloudUpload size={16} /> {saving ? '保存中…' : '保存并测试上传'}
         </Btn>
 
+        {/* 一键上传 / 导出（需求 #2b） */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+          <button onClick={() => setPicker('upload')} disabled={busy} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px', borderRadius: 12, border: '1px solid var(--c-teal)', color: 'var(--c-teal)', background: 'transparent', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.5 : 1 }}>
+            <Upload size={16} /> 一键上传
+          </button>
+          <button onClick={() => setPicker('export')} disabled={busy} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px', borderRadius: 12, border: '1px solid var(--c-info)', color: 'var(--c-info)', background: 'transparent', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.5 : 1 }}>
+            <Download size={16} /> 一键导出
+          </button>
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, color: 'var(--c-s500)', fontSize: 11, lineHeight: 1.6 }}>
           <Lock size={12} /> 备份用于同步你的生词本与笔记；真实模式由 webdav-upload 边缘函数完成上传。
         </div>
       </div>
+
+      {/* 类别选择弹层 */}
+      {picker && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
+          <div style={{ background: 'var(--c-surface)', width: '100%', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 18, maxHeight: '70%', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-p800)' }}>
+                {picker === 'upload' ? '选择上传内容' : '选择导出内容'}
+              </div>
+              <IconButton onClick={() => setPicker(null)} title="关闭"><X size={18} /></IconButton>
+            </div>
+            {webdavCategories().map((c) => (
+              <button
+                key={c.key}
+                disabled={busy}
+                onClick={() => (picker === 'upload' ? doUpload(c.key) : doExport(c.key))}
+                style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '14px 8px', background: 'var(--c-p100)', border: 'none', borderRadius: 10, fontSize: 15, color: 'var(--c-p800)', cursor: 'pointer', marginBottom: 8, opacity: busy ? 0.5 : 1 }}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+const X = ({ size, color }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color || 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+)
 
 function Lbl({ children }) {
   return <label style={{ fontSize: 13, color: 'var(--c-p600)', margin: '10px 0 6px', display: 'block' }}>{children}</label>

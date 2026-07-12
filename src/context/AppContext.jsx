@@ -208,14 +208,19 @@ export function AppProvider({ children }) {
   }, [detailWord])
 
   const goBack = useCallback(() => {
+    if (navStack.length === 0) {
+      // 详情栈为空时，关闭详情浮层返回上一页（修复需求 #4：箭头不再“假死”）
+      setNavForward([])
+      setDetailWord(null)
+      return
+    }
     setNavStack((prev) => {
-      if (prev.length === 0) return prev
       const last = prev[prev.length - 1]
       setNavForward((f) => [detailWord, ...f])
       setDetailWord(last)
       return prev.slice(0, -1)
     })
-  }, [detailWord])
+  }, [navStack, navForward, detailWord])
 
   const goForward = useCallback(() => {
     setNavForward((f) => {
