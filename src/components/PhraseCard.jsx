@@ -40,15 +40,31 @@ export default function PhraseCard({
   return (
     <Card onClick={onOpen} style={{ cursor: 'pointer', ...style }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* 完整原句（大字） */}
+        <div
+          style={{
+            fontSize: 18,
+            fontWeight: 700,
+            fontFamily: 'var(--th-font)',
+            color: 'var(--c-p800)',
+            lineHeight: 1.45,
+          }}
+        >
+          {item.thai}
+        </div>
+
+        {/* 分词结构（小字） */}
+        <div style={{ marginTop: 4 }}>
           <ThaiSentence
             text={item.thai}
             type="sentence"
             separator=" + "
             onWordClick={onWordClick}
-            style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--c-p800)' }}
+            style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--c-p600)' }}
           />
         </div>
+      </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           <IconButton onClick={onPlay} title="朗读"><Volume2 size={18} /></IconButton>
           <IconButton

@@ -6,6 +6,8 @@ import {
   getSentenceById, getWordBooks, getWordBook, getWordBookProgress, updateWordBookProgress,
 } from '../lib/db/index.js'
 import { Card, Badge, Spinner, EmptyState, IconButton } from '../components/UIComponents.jsx'
+import ThaiSentence from '../components/ThaiSentence.jsx'
+import PhraseCard from '../components/PhraseCard.jsx'
 
 const TABS = [
   { key: 'recent', label: '最近', icon: Clock },
@@ -72,11 +74,16 @@ function RecentTab({ userId, onTap }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {list.map((r) => (
         <Card key={r.word} onClick={() => onTap(r.word)} style={{ cursor: 'pointer' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'var(--th-font)', fontSize: 16, fontWeight: 600, color: 'var(--c-p800)' }}>{r.word}</span>
-            <span style={{ fontSize: 11, color: 'var(--c-p500)' }}>查 {r.lookup_count || 1} 次</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--th-font)', fontSize: 17, fontWeight: 700, color: 'var(--c-p800)', lineHeight: 1.4 }}>{r.word}</div>
+              <div style={{ marginTop: 3 }}>
+                <ThaiSentence text={r.word} type="sentence" separator=" + " onWordClick={onTap} style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--c-p500)' }} />
+              </div>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--c-p500)', flexShrink: 0, marginLeft: 8 }}>查 {r.lookup_count || 1} 次</span>
           </div>
-          <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 2 }}>{r.senses?.[0]?.meaning || ''}</div>
+          <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 4 }}>{r.senses?.[0]?.meaning || ''}</div>
         </Card>
       ))}
     </div>
@@ -120,7 +127,10 @@ function WordFolderDetail({ folderId, name, onBack, onTap }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {words.map((w, i) => (
             <Card key={i} onClick={() => onTap(w.word)} style={{ cursor: 'pointer' }}>
-              <span style={{ fontFamily: 'var(--th-font)', fontSize: 16, fontWeight: 600, color: 'var(--c-p800)' }}>{w.word}</span>
+              <div style={{ fontFamily: 'var(--th-font)', fontSize: 17, fontWeight: 700, color: 'var(--c-p800)', lineHeight: 1.4 }}>{w.word}</div>
+              <div style={{ marginTop: 3 }}>
+                <ThaiSentence text={w.word} type="sentence" separator=" + " onWordClick={onTap} style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--c-p500)' }} />
+              </div>
             </Card>
           ))}
         </div>
@@ -142,12 +152,14 @@ function SentenceFolderDetail({ folderId, name, onBack, onOpen }) {
   return (
     <DetailShell name={name} onBack={onBack}>
       {sentences.length === 0 ? <EmptyState icon="📭" text="文件夹为空" /> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {sentences.map((s) => (
-            <Card key={s.id} onClick={() => onOpen({ type: 'sentence', sentence: s })} style={{ cursor: 'pointer' }}>
-              <div style={{ fontFamily: 'var(--th-font)', fontSize: 14, color: 'var(--c-p800)' }}>{s.thai}</div>
-              <div style={{ fontSize: 12, color: 'var(--c-p600)', marginTop: 2 }}>{s.zh}</div>
-            </Card>
+            <PhraseCard
+              key={s.id}
+              item={s}
+              onOpen={() => onOpen({ type: 'sentence', sentence: s })}
+              onWordClick={(w) => onOpen({ type: 'word', word: w })}
+            />
           ))}
         </div>
       )}
