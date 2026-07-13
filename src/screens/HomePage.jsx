@@ -43,10 +43,7 @@ export default function HomePage() {
     }
   }, [userId])
 
-  if (phrase) return <PhraseDetailSection sentence={phrase} onClose={() => setPhrase(null)} />
-  if (phrasesOpen) return <PhrasesSection onClose={() => setPhrasesOpen(false)} onOpen={(s) => setPhrase(s)} />
-
-  // 搜索防抖（文档4.5.1）
+  // 搜索防抖（文档4.5.1）—— 必须放在所有 early return 之前，否则 hooks 数量随状态变化，会触发 "Rendered fewer hooks than expected"
   useEffect(() => {
     if (!query.trim()) {
       setResults([])
@@ -61,6 +58,9 @@ export default function HomePage() {
     }, 400)
     return () => clearTimeout(t)
   }, [query])
+
+  if (phrase) return <PhraseDetailSection sentence={phrase} onClose={() => setPhrase(null)} />
+  if (phrasesOpen) return <PhrasesSection onClose={() => setPhrasesOpen(false)} onOpen={(s) => setPhrase(s)} />
 
   const onRefresh = async (type) => {
     setRefreshing(true)
