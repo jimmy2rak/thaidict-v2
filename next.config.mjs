@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // dev / build 使用不同缓存目录，避免 dev 时被 build 产物覆盖导致 404
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+
   // 严格模式：开发期双重调用 effect，提前暴露副作用问题
   reactStrictMode: true,
 

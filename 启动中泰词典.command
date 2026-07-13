@@ -64,6 +64,12 @@ else
   echo "${GREEN}[4/5]${NC} 端口 $PORT 空闲，可以启动。"
 fi
 
+# 4.1 清理 Next.js dev 缓存，避免 dev 和 build 产物互相覆盖导致白屏/404
+if [ -d ".next-dev" ]; then
+  echo "${YELLOW}[4.1/5]${NC} 清理旧的 dev 缓存目录（.next-dev）……"
+  rm -rf .next-dev
+fi
+
 # ---- 5. 启动开发服务器，并在启动后自动打开浏览器 ----
 echo "${GREEN}[5/5]${NC} 正在启动 Next.js 开发服务器……"
 echo ""
