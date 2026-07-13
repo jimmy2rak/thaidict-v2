@@ -329,6 +329,7 @@ export function AppProvider({ children }) {
     detailWord,
     unknownWord,
     selectedSentence,
+    setSelectedSentence,
     showReset,
     setShowReset,
     detailLoading,
