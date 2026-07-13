@@ -96,11 +96,47 @@ npm run dev     # 启动开发服务器，访问 http://localhost:3000
 
 ## 五、接下来要做什么（⏳ 待办，按优先级）
 
-### 阶段 4：Bug 逐项核对（下一步做这个）
+### 阶段 4：Bug 逐项核对（✅ 已完成，2026-07-13）
+
 目标：把历史遗留的 A~G 类 Bug 逐条对照现有代码，确认是否都已规避。
-- [ ] 打开 `rebuild/02-全量Bug汇总与修复方案.md`，逐条核对。
-- [ ] 每条 Bug 在当前代码里找到对应位置，确认已修复或标注仍存在。
-- [ ] 把仍存在的 Bug 记录到本文件「已知问题」小节。
+核对方法：实际打开 `rebuild/02-全量Bug汇总与修复方案.md` 并比对当前 `src/lib/db/*`、`src/context/AppContext.jsx`、`app/layout.jsx`、`src/index.css`。
+
+**状态总表**（✅ 已规避 / 🟡 部分 / ⏸ 推迟到阶段6真实库）
+
+| Bug | 类别 | 状态 | 当前代码位置 / 说明 |
+|-----|------|------|---------------------|
+| A-1 | RLS anon 策略 | ⏸ | `user_folder_sentences` 表 RLS，真实库才出现；SQL 见 `supabase/migrations/00-fix-known-bugs.sql` |
+| A-2 | user_api_keys 无建表脚本 | ⏸ | 阶段6建库时一并执行迁移 SQL |
+| A-3 | user_sentence_bookmarks user_id 类型 | ⏸ | 迁移脚本顺序问题，阶段6执行时修正 |
+| A-4 | community_words INSERT 对 anon 开放 | ⏸ | 阶段6 RLS 修正 |
+| A-5 | create_default_folders 参数 TEXT | ⏸ | 阶段6 RPC 修正 |
+| B-1 | recordWordLookup 不递增 | ✅ | `src/lib/db/recent.js` 已先 update 再 insert |
+| B-2 | handleWordTap 并发竞态 | ✅ | `src/context/AppContext.jsx` 已有 `pendingLookups` in-flight 守卫 |
+| B-3 | getDictionaryCount 查错表 | ✅ | `src/lib/db/search.js` 已查 `dictionary_full` |
+| B-4 | refreshDailyPick anon 写入失败 | ⏸ | 真实库 RLS 问题，阶段6用 Edge Function 或加策略 |
+| B-5 | saveUserSettings 读改写竞态 | ✅ | `src/lib/db/settings.js` 已改数据库层合并 upsert |
+| B-6 | 打卡 study_minutes 竞态 | ✅ | `src/lib/db/checkin.js` 已原子累加（real 走 `add_study_minutes` RPC） |
+| C-1 | daily_picks 文本引用悬空 | ⏸ | 设计权衡，阶段6加 fallback 重生成 |
+| C-2 | community_words LOWER 索引不一致 | ⏸ | 阶段6 upsert 统一 LOWER |
+| C-3 | user_settings user_id TEXT | ⏸ | 阶段6建表直接用 UUID |
+| C-4 | getFolders count 解析依赖版本 | ✅ | `src/lib/db/folders.js` 已做防御性解析 |
+| D-1 | OAuth 回调 /auth/callback 无处理 | ⏸ | 阶段6接 Supabase OAuth 时加 PKCE code 交换 |
+| D-2 | signUp 不自动登录无提示 | ⏸ | 阶段6处理邮箱确认 UI |
+| D-3 | magic link redirectTo 无处理 | ⏸ | 同 D-1，阶段6统一处理 token |
+| E-1 | iOS 动态视口高度抖动 | ✅ | `src/index.css` `#root` 已用 `100dvh`（回退 `100vh`） |
+| E-2 | user-scalable=no 无障碍 | ✅ | `app/layout.jsx` 已移除 `maximumScale`/`user-scalable`；改用 `.no-select` + `touch-action:manipulation` |
+| F-1 | ai-proxy 缓存无失效 | ⏸ | 阶段6 Edge Function 加 Cache-Control / updated_at 比对 |
+| F-2 | send-otp Brevo 错误未分类 | ⏸ | 阶段6 Edge Function 按 HTTP 状态码区分 |
+| F-3 | send-reminder tasks 无验证 | ⏸ | 阶段6 Edge Function 加输入校验 |
+| G-1 | supabase.js 1923 行单文件 | ✅ | 已拆为 `src/lib/supabase.js`(17行) + `src/lib/db/*` 模块 |
+| G-2 | ProfilePage 897 行 | ✅ | 已拆为 `src/screens/ProfilePage.jsx`(94行) + `subsections/*` |
+| G-3 | 无错误日志收集 | 🟡 | mock 阶段暂不强求；建议阶段6接轻量错误上报（Sentry 或 error_logs 表） |
+| G-4 | thaiSegment 词典无版本控制 | 🟡 | 轻微；可在 `dictionary_full` 加 `updated_at`，加载时比对 |
+
+> **结论**：当前 mock 阶段可复现的前端 Bug（B-1/B-2/B-3/B-5/B-6、C-4、E-1/E-2、G-1/G-2）**已全部规避**。
+> 剩余的 ⏸ 项均为"接入真实 Supabase（阶段6）才会出现"的数据库/RLS/Edge Function 问题，
+> 文档 `rebuild/02-全量Bug汇总与修复方案.md` 已给出每条的完整修复 SQL/代码，
+> 并已固化到 `supabase/migrations/00-fix-known-bugs.sql`，阶段6建库时一次性执行即可。
 
 ### 阶段 5：整体自测 + 打磨
 - [ ] 4 个标签页逐页点一遍，确认没有白屏 / 报错。
@@ -110,6 +146,7 @@ npm run dev     # 启动开发服务器，访问 http://localhost:3000
 
 ### 阶段 6：接入真实 Supabase + 上线
 - [ ] 在 Supabase 建库，创建所有数据表（重点：`user_roles`、`pending_approvals` 是新表）。
+- [ ] **先执行 `supabase/migrations/00-fix-known-bugs.sql`**（含 A 类 RLS 修正、C-2 LOWER 索引、B-6 的 `add_study_minutes` RPC 等历史 Bug 修复，来自 `rebuild/02-全量Bug汇总与修复方案.md`）。
 - [ ] 配置环境变量 `.env.local`：`NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`。
       （代码会自动检测：有这两个变量就用真实数据库，没有就用 mock，页面**零改动**。）
 - [ ] 用 Next Route Handlers 实现 4 个后端接口（对应原 Edge Function）：
@@ -120,7 +157,17 @@ npm run dev     # 启动开发服务器，访问 http://localhost:3000
 ---
 
 ## 六、已知问题 / 待确认（发现新问题写这里）
-- （暂无。阶段 4 核对后在此登记。）
+
+> 阶段 4 核对结论：当前 mock（本地）阶段**无新增已知缺陷**，历史上 A~G 类 Bug 中可在前端复现的均已规避。
+> 以下为**推迟到阶段 6（接入真实 Supabase）才需处理**的已知项，修复方案已就绪。
+
+- **[阶段6] A 类 RLS/建表**：`user_folder_sentences` 等表策略、缺 `user_api_keys` 建表脚本、类型不一致 → 执行 `supabase/migrations/00-fix-known-bugs.sql`。
+- **[阶段6] B-4**：`refreshDailyPick` 用 anon key 写 `daily_picks` 会被 RLS 拒 → 改用 Edge Function 或加 authenticated 策略。
+- **[阶段6] C-1/C-2/C-3**：`daily_picks` 文本引用、community_words LOWER 索引、user_settings 类型 → 阶段6 建表/迁移时统一修正。
+- **[阶段6] D 类 OAuth**：`/auth/callback` PKCE code 交换、注册邮箱确认提示、magic link token 处理 → 阶段6 接 Supabase Auth 时统一加。
+- **[阶段6] F 类 Edge Function**：ai-proxy 缓存失效、send-otp 错误分类、send-reminder 输入校验 → 实现 `app/api/*` Route Handlers 时一并处理。
+- **[建议阶段6] G-3**：加轻量错误日志收集（Sentry 或 `error_logs` 表）。
+- **[轻微] G-4**：`thaiSegment` 分词词典加载加版本号，避免词典更新后需手动刷新。
 
 ---
 

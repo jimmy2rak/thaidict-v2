@@ -17,10 +17,11 @@ export const metadata = {
 }
 
 // 视口设置（对应原 index.html 的 <meta name="viewport"> 与 theme-color）
+// 注意：不再设置 maximumScale / user-scalable。原 user-scalable=no 已移除（Bug E-2 无障碍），
+// 残余的 maximumScale:1 也在此一并去掉；缩放行为改为由 CSS .no-select / touch-action:manipulation 控制。
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: 'cover',
   themeColor: '#FAF7F4',
 }
