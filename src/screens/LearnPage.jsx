@@ -76,12 +76,12 @@ function MainView({ userId, setView }) {
   }
 
   const entries = [
-    { key: 'practice', icon: Target, color: '#5B8C7E', label: '练习测验' },
-    { key: 'diary', icon: BookText, color: '#C4993D', label: '学习日记' },
-    { key: 'stats', icon: BarChart3, color: '#5B7E9E', label: '学习统计' },
-    { key: 'notes', icon: StickyNote, color: '#C45B5B', label: '我的笔记' },
-    { key: 'achievements', icon: Award, color: '#D4934D', label: '我的成就' },
-    { key: 'adjust', icon: CalendarClock, color: '#8B7355', label: '调整计划' },
+    { key: 'practice', icon: Target, color: '#9FB08E', label: '练习测验' },
+    { key: 'diary', icon: BookText, color: '#C2A878', label: '学习日记' },
+    { key: 'stats', icon: BarChart3, color: '#8FA3B0', label: '学习统计' },
+    { key: 'notes', icon: StickyNote, color: '#C08A7A', label: '我的笔记' },
+    { key: 'achievements', icon: Award, color: '#C9A86A', label: '我的成就' },
+    { key: 'adjust', icon: CalendarClock, color: '#9C8467', label: '调整计划' },
   ]
 
   return (

@@ -65,7 +65,7 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
   }
   const onCreate = async () => {
     if (!newFolder.trim() || !userId) return
-    const f = await createFolder(userId, newFolder.trim(), '#C4993D', 'sentence')
+    const f = await createFolder(userId, newFolder.trim(), '#C2A878', 'sentence')
     setFolders(await getFolders(userId))
     if (f) await addSentenceToFolder(f.id, sentence.id)
     setNewFolder('')

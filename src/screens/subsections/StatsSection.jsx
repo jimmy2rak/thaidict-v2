@@ -12,7 +12,7 @@ import {
 import { getGlobal } from '../../lib/mock/store.js'
 import { IconButton, Card, Spinner } from '../../components/UIComponents.jsx'
 
-const PIE_COLORS = ['#5B8C7E', '#C4993D', '#C45B5B', '#5B7E9E', '#D4934D', '#8B7355']
+const PIE_COLORS = ['#9FB08E', '#C2A878', '#C08A7A', '#8FA3B0', '#C9A86A', '#9C8467']
 const WEEK_LABELS = ['一', '二', '三', '四', '五', '六', '日']
 
 export default function StatsSection({ onClose }) {
@@ -76,10 +76,10 @@ export default function StatsSection({ onClose }) {
       <div className="scroll-y" style={{ flex: 1, padding: 16 }}>
         {/* 概览 */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          <Ov icon={Flame} color="#C4993D" value={overview.streak} label="连续打卡" />
-          <Ov icon={BookMarked} color="#D4934D" value={overview.bookmarks} label="收藏词数" />
-          <Ov icon={Target} color="#5B8C7E" value={overview.practice.count} label="练习次数" />
-          <Ov icon={CheckCircle2} color="#5B7E9E" value={overview.practice.accuracy + '%'} label="正确率" />
+          <Ov icon={Flame} color="#C2A878" value={overview.streak} label="连续打卡" />
+          <Ov icon={BookMarked} color="#C9A86A" value={overview.bookmarks} label="收藏词数" />
+          <Ov icon={Target} color="#9FB08E" value={overview.practice.count} label="练习次数" />
+          <Ov icon={CheckCircle2} color="#8FA3B0" value={overview.practice.accuracy + '%'} label="正确率" />
         </div>
 
         {/* 周学习时长 */}
@@ -91,7 +91,7 @@ export default function StatsSection({ onClose }) {
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--c-p500)' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: 'var(--c-s500)' }} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: 'rgba(0,0,0,0.04)' }} contentStyle={{ fontSize: 12, borderRadius: 8, border: 'none' }} />
-                <Bar dataKey="分钟" fill="#5B8C7E" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="分钟" fill="#9FB08E" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -103,7 +103,7 @@ export default function StatsSection({ onClose }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
             {heatmap.map((h, i) => {
               const intensity = h.count / maxHeat
-              const bg = h.count === 0 ? 'var(--c-p100)' : `rgba(91,140,126,${0.25 + intensity * 0.75})`
+              const bg = h.count === 0 ? 'var(--c-p100)' : `rgba(159,176,142,${0.25 + intensity * 0.75})`
               return (
                 <div
                   key={i}

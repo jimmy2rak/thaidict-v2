@@ -48,7 +48,7 @@ function TabBar({ page, onChange }) {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: active ? 'var(--c-teal)' : 'var(--c-s500)',
+              color: active ? 'var(--c-primary)' : 'var(--c-s500)',
             }}
           >
             <Icon size={22} strokeWidth={1.6} />

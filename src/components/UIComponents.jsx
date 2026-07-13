@@ -27,10 +27,10 @@ export function Card({ children, style, onClick, noPad }) {
       }
       style={{
         background: 'var(--c-surface)',
-        borderRadius: 14,
-        padding: noPad ? 0 : '14px 16px',
-        border: '1px solid var(--c-p100)',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        borderRadius: 'var(--radius-lg)',
+        padding: noPad ? 0 : '18px 16px',
+        border: 'var(--border-thin)',
+        boxShadow: 'var(--shadow-card)',
         ...style,
       }}
     >
@@ -61,10 +61,33 @@ export function Badge({ children, color = 'var(--c-teal)', style }) {
 
 export function Btn({ children, onClick, variant = 'primary', disabled, style, type = 'button' }) {
   const variants = {
-    primary: { background: 'var(--c-teal)', color: '#fff' },
-    ghost: { background: 'var(--c-p100)', color: 'var(--c-p700)' },
-    danger: { background: 'var(--c-rose)', color: '#fff' },
-    gold: { background: 'var(--c-gold)', color: '#fff' },
+    // 实线描边主按钮
+    primary: {
+      background: 'color-mix(in srgb, var(--c-primary) 9%, transparent)',
+      color: 'var(--c-primary)',
+      border: '1.6px solid var(--c-primary)',
+    },
+    // 虚线描边次要操作按钮
+    secondary: {
+      background: 'transparent',
+      color: 'var(--c-p500)',
+      border: '1.4px dashed var(--c-s300)',
+    },
+    ghost: {
+      background: 'var(--c-p100)',
+      color: 'var(--c-p700)',
+      border: '1px solid transparent',
+    },
+    danger: {
+      background: 'var(--c-rose)',
+      color: '#fff',
+      border: '1.6px solid var(--c-rose)',
+    },
+    gold: {
+      background: 'color-mix(in srgb, var(--c-gold) 10%, transparent)',
+      color: 'var(--c-gold)',
+      border: '1.6px solid var(--c-gold)',
+    },
   }
   return (
     <button
@@ -73,7 +96,7 @@ export function Btn({ children, onClick, variant = 'primary', disabled, style, t
       disabled={disabled}
       style={{
         border: 'none',
-        borderRadius: 12,
+        borderRadius: 'var(--radius-sm)',
         padding: '11px 16px',
         fontSize: 15,
         fontWeight: 600,
@@ -109,8 +132,8 @@ export function IconButton({ onClick, title, active, children, style, disabled }
         width: 38,
         height: 38,
         borderRadius: 10,
-        background: active ? 'color-mix(in srgb, var(--c-teal) 16%, transparent)' : 'transparent',
-        color: active ? 'var(--c-teal)' : 'var(--c-p600)',
+        background: active ? 'color-mix(in srgb, var(--c-primary) 14%, transparent)' : 'transparent',
+        color: active ? 'var(--c-primary)' : 'var(--c-p500)',
         border: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.35 : 1,

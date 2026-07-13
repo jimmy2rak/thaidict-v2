@@ -8,31 +8,33 @@
 }
 
 :root {
-  /* 背景与表面 */
-  --c-bg: #FAF7F4;
-  --c-surface: #FFFFFF;
+  /* 奶油米白底色 + 莫兰迪点缀（新中式奶油轻泰式复古极简） */
+  --c-bg: #F6F1E7;          /* 奶油米白 */
+  --c-surface: #FCF9F2;     /* 暖白卡面 */
+  --c-surface-2: #F1E9DA;   /* 次级表面 */
 
-  /* 主色阶（棕色调） */
-  --c-p100: #F0EBE3;
-  --c-p200: #E0D5C7;
-  --c-p300: #C4B5A3;
-  --c-p500: #8B7355;
-  --c-p600: #5B3A29;
-  --c-p700: #3D261A;
-  --c-p800: #2D2019;
+  /* 灰褐色主调（墨褐） */
+  --c-p100: #EFE7D8;
+  --c-p200: #E2D7C5;
+  --c-p300: #CFC3B0;
+  --c-p500: #9C8E7C;
+  --c-p600: #7C6E5E;
+  --c-p700: #5C5247;
+  --c-p800: #423A31;        /* 主文字（暖墨） */
 
   /* 辅助灰阶 */
-  --c-s100: #F5F5F5;
-  --c-s200: #E8E8E8;
-  --c-s300: #C0C0C0;
-  --c-s500: #808080;
+  --c-s100: #F2ECE0;
+  --c-s200: #E8DECD;
+  --c-s300: #CBC0AE;
+  --c-s500: #9A8E7C;
 
-  /* 品牌色 */
-  --c-teal: #5B8C7E;   /* 成功 / 确认 */
-  --c-gold: #C4993D;   /* 重要 / 警告 */
-  --c-rose: #C45B5B;   /* 错误 / 删除 */
-  --c-info: #5B7E9E;   /* 链接 / 提示 */
-  --c-amber: #D4934D;  /* 收藏 / 星标 */
+  /* 莫兰迪点缀色 */
+  --c-primary: #9A8467;     /* 主品牌（灰褐金） */
+  --c-teal: #9FB08E;        /* 浅豆绿（成功 / 确认） */
+  --c-gold: #C2A878;        /* 浅金（重要 / 星标） */
+  --c-rose: #C08A7A;        /* 哑光陶土（错误 / 删除） */
+  --c-info: #8FA3B0;        /* 雾蓝（链接 / 提示） */
+  --c-amber: #C9A86A;       /* 柔和金（收藏 / 星标） */
 
   /* 字体 */
   --zh-font: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -40,32 +42,53 @@
   --zh-serif: 'Noto Serif SC', serif;
   --th-serif: 'Noto Serif Thai', 'Charm', serif;
 
+  /* 圆角（超大圆角卡片分区） */
+  --radius-xs: 10px;
+  --radius-sm: 14px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* 阴影（轻微柔和浅灰软阴影） */
+  --shadow-sm: 0 1px 4px rgba(110, 98, 80, 0.05);
+  --shadow-card: 0 2px 16px rgba(110, 98, 80, 0.06);
+  --shadow-lg: 0 8px 30px rgba(110, 98, 80, 0.10);
+
+  /* 描边（线性细线） */
+  --border-thin: 1px solid var(--c-p200);
+  --border-hair: 1px solid var(--c-p100);
+
   /* 布局 */
   --app-max-width: 430px;
-  --tabbar-height: 56px;
+  --tabbar-height: 60px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --app-height: 100vh;
 }
 
 [data-theme="dark"] {
-  --c-bg: #1A1614;
-  --c-surface: #2A2420;
-  --c-p100: #2A2420;
-  --c-p200: #3A322C;
-  --c-p300: #5A4F45;
-  --c-p500: #B8A890;
-  --c-p600: #D8C8B0;
-  --c-p700: #E8DCC8;
-  --c-p800: #F0EBE3;
-  --c-s100: #2A2420;
-  --c-s200: #3A322C;
-  --c-s300: #5A4F45;
-  --c-s500: #8A7E70;
-  --c-teal: #6FA697;
-  --c-gold: #D9B45C;
-  --c-rose: #E07A7A;
-  --c-info: #7BA0C0;
-  --c-amber: #E5A85C;
+  --c-bg: #211D18;
+  --c-surface: #2A251F;
+  --c-surface-2: #322C24;
+  --c-p100: #2A251F;
+  --c-p200: #3A332A;
+  --c-p300: #5A5044;
+  --c-p500: #B3A692;
+  --c-p600: #CBBFA8;
+  --c-p700: #DDD2BE;
+  --c-p800: #EFE7D6;
+  --c-s100: #2A251F;
+  --c-s200: #3A332A;
+  --c-s300: #5A5044;
+  --c-s500: #9A8E7C;
+  --c-primary: #BBA079;
+  --c-teal: #A9B89A;
+  --c-gold: #D6BC8C;
+  --c-rose: #D79A8A;
+  --c-info: #A3B6C2;
+  --c-amber: #D9BC84;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.30);
+  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.45);
 }
 
 html,
@@ -90,7 +113,7 @@ body {
   position: relative;
   overflow: hidden;
   background: var(--c-bg);
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 0 40px rgba(110, 98, 80, 0.05);
 }
 
 button {

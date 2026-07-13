@@ -70,9 +70,9 @@ export function seedIfNeeded() {
 
 function presetWordBooks() {
   return [
-    { id: 1, name: 'HSK 泰语对照 200 词', description: '基础高频词汇', level: 'beginner', cover_color: '#5B8C7E', sort_order: 0, entries: ['กิน', 'ไป', 'ดี', 'น้ำ', 'อาหาร', 'ข้าว', 'ชอบ', 'เรียน'] },
-    { id: 2, name: '旅行必备 100 句', description: '出行实用表达', level: 'beginner', cover_color: '#C4993D', sort_order: 1, entries: ['สวัสดี', 'ไป', 'บ้าน', 'คน', 'วัน'] },
-    { id: 3, name: '日常饮食词汇', description: '吃货专用', level: 'intermediate', cover_color: '#C45B5B', sort_order: 2, entries: ['กิน', 'อาหาร', 'น้ำ', 'ข้าว', 'ใหม่', 'แพง'] },
+    { id: 1, name: 'HSK 泰语对照 200 词', description: '基础高频词汇', level: 'beginner', cover_color: '#9FB08E', sort_order: 0, entries: ['กิน', 'ไป', 'ดี', 'น้ำ', 'อาหาร', 'ข้าว', 'ชอบ', 'เรียน'] },
+    { id: 2, name: '旅行必备 100 句', description: '出行实用表达', level: 'beginner', cover_color: '#C2A878', sort_order: 1, entries: ['สวัสดี', 'ไป', 'บ้าน', 'คน', 'วัน'] },
+    { id: 3, name: '日常饮食词汇', description: '吃货专用', level: 'intermediate', cover_color: '#C08A7A', sort_order: 2, entries: ['กิน', 'อาหาร', 'น้ำ', 'ข้าว', 'ใหม่', 'แพง'] },
   ]
 }
 

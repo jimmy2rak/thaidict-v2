@@ -39,7 +39,7 @@ export async function getFolders(userId) {
 export async function createFolder(userId, name, color, folderType) {
   if (!isSupabaseConfigured) {
     const folders = getUserColl(userId, 'folders', [])
-    const f = { id: uid(), name, color: color || '#5B8C7E', folder_type: folderType, sort_order: folders.length }
+    const f = { id: uid(), name, color: color || '#9FB08E', folder_type: folderType, sort_order: folders.length }
     folders.push(f)
     setUserColl(userId, 'folders', folders)
     return f

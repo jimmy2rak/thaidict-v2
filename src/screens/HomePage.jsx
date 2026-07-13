@@ -22,6 +22,7 @@ import ThaiSentence from '../components/ThaiSentence.jsx'
 import PhraseCard from '../components/PhraseCard.jsx'
 import PhrasesSection from './subsections/PhrasesSection.jsx'
 import PhraseDetailSection from './subsections/PhraseDetailSection.jsx'
+import { PagodaLine, LeafLine, BowlLine } from '../components/Decorations.jsx'
 
 export default function HomePage() {
   const app = useApp()
@@ -77,6 +78,15 @@ export default function HomePage() {
 
   return (
     <div className="scroll-y" style={{ flex: 1, padding: '16px 16px 24px' }}>
+      {/* 品牌头部（新中式素雅） */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--zh-serif)', color: 'var(--c-p800)', letterSpacing: 3 }}>词笺</div>
+          <div style={{ fontSize: 11, color: 'var(--c-p500)', letterSpacing: 2, marginTop: 3 }}>中泰双语 · 温柔相伴</div>
+        </div>
+        <PagodaLine size={42} color="var(--c-gold)" style={{ opacity: 0.85 }} />
+      </div>
+
       {/* 统计栏 */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         <Stat icon={Flame} value={stats.streak} label="连续打卡" color="var(--c-gold)" />
@@ -136,7 +146,9 @@ export default function HomePage() {
           />
           {/* 短语库入口 */}
           <Card onClick={() => setPhrasesOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ width: 36, height: 36, borderRadius: 10, background: 'color-mix(in srgb, var(--c-gold) 16%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📚</span>
+            <span style={{ width: 40, height: 40, borderRadius: 12, background: 'color-mix(in srgb, var(--c-gold) 14%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--c-gold)' }}>
+              <LeafLine size={24} />
+            </span>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-p800)' }}>短语库</div>
               <div style={{ fontSize: 12, color: 'var(--c-p500)' }}>按主题浏览常用泰语短语</div>
@@ -269,7 +281,10 @@ function DailySentenceCard({ sentence, onRefresh, onToken, onOpen, refreshing, u
   return (
     <Card style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <Badge color="var(--c-gold)">每日一句</Badge>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <BowlLine size={22} color="var(--c-primary)" style={{ opacity: 0.7 }} />
+          <Badge color="var(--c-gold)">每日一句</Badge>
+        </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <IconBtn onClick={onRefresh} disabled={refreshing}><RefreshCw size={16} className={refreshing ? 'spin' : ''} /></IconBtn>
         </div>

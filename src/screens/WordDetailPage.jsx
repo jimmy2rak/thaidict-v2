@@ -86,7 +86,7 @@ export default function WordDetailPage({ word }) {
   }
   const onCreateFolder = async () => {
     if (!newFolder.trim() || !userId) return
-    const f = await createFolder(userId, newFolder.trim(), '#5B8C7E', 'word')
+    const f = await createFolder(userId, newFolder.trim(), '#9FB08E', 'word')
     setFolders(await getFolders(userId))
     if (f) await addWordToFolder(f.id, word)
     setNewFolder('')
