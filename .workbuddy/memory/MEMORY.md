@@ -74,9 +74,9 @@ thaidict/
     ├── index.css          # 全局样式 + CSS 变量
     ├── context/
     │   └── AppContext.jsx # 全局状态中枢（登录、导航栈、字体、AI 生成路由等）
-    ├── components/        # 通用组件（UIComponents / SentenceDetail / WordBubble / ThaiSentence）
+    ├── components/        # 通用组件（UIComponents / SentenceDetail / WordBubble / ThaiSentence / PhraseCard / SentenceDetailView）
     ├── icons/             # 自定义图标
-    ├── data/              # mock 静态数据（mockData / phraseData）
+    ├── data/              # mock 静态数据（mockData / phraseData）。phraseData 现含 literal（字面意义）/ actual（实际意义）/ advice（学习者建议）/ tags（标签分类）四段式字段
     ├── utils/             # 泰语分词、TTS 朗读
     │   ├── thaiToken.ts   # ⭐ 纯前端 newmm 泰语分词（normalize+正向最长匹配+音节兜底+自定义词库+缓存/防抖客户端）
     │   └── tts.js / thaiSegment.js
