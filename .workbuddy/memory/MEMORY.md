@@ -154,8 +154,13 @@ thaidict/
 - **Next.js 客户端环境变量**：在浏览器端读取的环境变量必须加 `NEXT_PUBLIC_` 前缀
   （原 Vite 的 `VITE_*` 在 Next 里不生效，`supabase.js` 已改为 `NEXT_PUBLIC_SUPABASE_*`）。
 - **Next.js 全量客户端渲染**：原 Vite SPA 全靠 `window/localStorage`，直接 SSR 会崩。
-  用 `app/page.jsx` 的 `dynamic(() => import('./AppShell'), { ssr: false })` 包成纯客户端，
-  配合 `<div id="root">` 复用原 `#root` 手机框样式，行为与原 Vite 完全一致。
+  实际采用 `mounted` 守卫方案：`app/page.jsx` 标 `'use client'` 直接 `import AppShell`；
+  `AppShell` 用 `useState(false)` + `useEffect(()=>setMounted(true))` 守卫，服务端/首帧只渲染占位，
+  浏览器挂载后再渲染 `AppProvider + App`。**不要用 `dynamic(ssr:false)` 包整个 App**。
+- **Next dev 错误遮罩会「假死」整页**：任一未捕获的点击事件异常（如 `xxx is not a function`）会触发
+  Next 开发模式的**全屏红色 error overlay**，盖在最上层拦截所有点击 → 表现为「卡片、底部菜单全都点不动」。
+  排查「点不动」优先看浏览器 console 的 `is not a function` 类报错（曾因 context 漏暴露 `setSelectedSentence` 触发），
+  而非只盯 CSS 遮罩。`next build` 生产构建不会出此遮罩。
 - **`import.meta` 在 Next 不可用**：任何 `import.meta.env` 都要改成 `process.env.NEXT_PUBLIC_*`，
   `next build` 对 `import.meta.env` 会直接报语法错误。
 
