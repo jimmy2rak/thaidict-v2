@@ -14,6 +14,7 @@ import {
 import { transformWordData } from '../lib/utils.js'
 import { speak } from '../utils/tts.js'
 import { Card, Badge, IconButton, WordToken, Spinner } from '../components/UIComponents.jsx'
+import ThaiSentence from '../components/ThaiSentence.jsx'
 import MorphologySection from './subsections/MorphologySection.jsx'
 import NoteEditorSection from './subsections/NoteEditorSection.jsx'
 
@@ -136,7 +137,7 @@ export default function WordDetailPage({ word }) {
             </div>
             {s.examples?.map((ex, j) => (
               <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--c-p600)', marginTop: 4, fontFamily: 'var(--th-font)' }}>
-                <span style={{ cursor: 'pointer' }} onClick={() => handleWordTap(ex.thai)}>{ex.thai}</span>
+                <ThaiSentence text={ex.thai} type="sentence" style={{ fontFamily: 'var(--th-font)' }} />
                 <span style={{ color: 'var(--c-p500)', marginLeft: 2 }}>{ex.zh}</span>
                 <button
                   onClick={() => speak(ex.thai, { rate })}
