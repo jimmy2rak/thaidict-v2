@@ -1,9 +1,13 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import { AppProvider } from './context/AppContext.jsx'
-import './index.css'
+'use client'
 
+// 应用外壳（Client Component）：等价于原 main.jsx 的挂载逻辑。
+// 因为本文件由 app/page.jsx 以 dynamic(ssr:false) 引入，
+// 所以它只在浏览器执行，服务端不会触碰 window / localStorage。
+import React from 'react'
+import { AppProvider } from '../src/context/AppContext.jsx'
+import App from '../src/App.jsx'
+
+// 错误边界：渲染异常时展示堆栈而非白屏（原 main.jsx 中同名组件）
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -20,7 +24,9 @@ class ErrorBoundary extends React.Component {
       return (
         <div style={{ padding: 24, color: 'var(--c-rose)', fontFamily: 'var(--zh-font)' }}>
           <h3>出错了</h3>
-          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{String(this.state.error?.stack || this.state.error)}</pre>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
+            {String(this.state.error?.stack || this.state.error)}
+          </pre>
         </div>
       )
     }
@@ -28,12 +34,12 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+export default function AppShell() {
+  return (
     <ErrorBoundary>
       <AppProvider>
         <App />
       </AppProvider>
     </ErrorBoundary>
-  </React.StrictMode>
-)
+  )
+}

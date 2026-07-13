@@ -8,7 +8,9 @@
 
 ## 1. 这是什么项目
 
-**中泰双语词典网页应用**（中文 ↔ 泰语），单页 Web 应用（SPA）。
+**中泰双语词典网页应用**（中文 ↔ 泰语），采用 **Next.js 14（App Router）** 作为外壳、
+内部以「客户端全量渲染的 SPA 内核」运行（整个 App 通过 `dynamic(ssr:false)` 加载，
+行为与原 Vite SPA 完全一致，但获得了 Next 的路由/构建/部署能力）。
 功能包含：查词、例句、发音朗读、单词收藏、单词本管理、学习日记、短语库、构词法、
 练习测验、学习统计图表、学习提醒、WebDAV 云备份、AI 智能查词、审批工作流、权限管理等。
 
@@ -23,27 +25,27 @@
 - **命令行**：
   ```bash
   cd /Users/jimmywang/多媒体/开发者/thaidict
-  npm install      # 首次
-  npm run dev      # 开发服务器，http://localhost:3000
-  npm run build    # 打包到 dist/
-  npm run preview  # 本地预览打包结果
+  npm install      # 首次（会安装 next 等依赖）
+  npm run dev      # 启动 Next.js 开发服务器，http://localhost:3000
+  npm run build    # 生产构建，输出到 .next/
+  npm run start    # 本地以生产模式运行构建结果
   ```
 - **「localhost:3000 打不开」的唯一常见原因**：dev server 没启动。启动它即可。
-- 端口固定 **3000**，在 `vite.config.js` 里设定（`host: true` 允许局域网访问）。
+- 端口固定 **3000**（`next dev` 默认端口；如需改在 `next.config.mjs` 或命令行 `-p` 指定）。
 
 ---
 
 ## 3. 技术栈
 
-- **构建工具**：Vite 6
-- **框架**：React 18.3.1（用 JSX，**不用 TypeScript**）
-- **样式**：CSS 变量 + 内联样式（**不用 Tailwind**），全局样式在 `src/index.css`
+- **框架/构建**：**Next.js 14（App Router）** + React 18.3.1（页面用 JSX，**不用 TypeScript**，
+  仅 `src/utils/thaiToken.ts` 为 TS；`next.config.mjs` 已设 `typescript.ignoreBuildErrors`）
+- **样式**：CSS 变量 + 内联样式（**不用 Tailwind**），全局样式在 `src/index.css`（由 `app/layout.jsx` 引入）
 - **图标**：lucide-react
 - **图表**：recharts（学习统计页）
 - **数据库客户端**：@supabase/supabase-js（上线时才真正使用）
 - **运行环境**：Node 22.x（WorkBuddy 托管版路径 `~/.workbuddy/binaries/node/versions/22.22.2/bin`）
 
-**5 个运行时依赖**：`@supabase/supabase-js`、`lucide-react`、`react`、`react-dom`、`recharts`。
+**6 个运行时依赖**：`next`、`@supabase/supabase-js`、`lucide-react`、`react`、`react-dom`、`recharts`。
 
 ---
 
@@ -53,9 +55,12 @@
 thaidict/
 ├── 启动中泰词典.command   # 一键启动脚本（双击运行）
 ├── todo.md                # 开发待办清单（进度总览）
-├── index.html             # 入口 HTML
-├── vite.config.js         # Vite 配置（端口 3000）
-├── vercel.json            # Vercel 部署配置
+├── next.config.mjs        # Next.js 配置（端口/构建选项/忽略TS校验）
+├── jsconfig.json          # 路径别名 @/* → ./src
+├── app/                   # ⭐ Next.js App Router 入口
+│   ├── layout.jsx         #   根布局：引入全局 CSS、Google Fonts、title/manifest
+│   ├── page.jsx           #   入口页：dynamic(ssr:false) 加载 AppShell
+│   └── AppShell.jsx       #   客户端外壳：ErrorBoundary + AppProvider + App（等价于原 main.jsx）
 ├── rebuild/               # 6 份需求/设计文档（项目的"图纸"）
 │   ├── 01-项目基础信息与锁定清单.md
 │   ├── 02-全量Bug汇总与修复方案.md
@@ -64,16 +69,18 @@ thaidict/
 │   ├── 05-全路由页面详细需求文档.md
 │   └── 06-从零搭建分步执行开发手册.md
 └── src/
-    ├── main.jsx           # React 入口
+    ├── (入口在 app/)       # React 入口已迁至 app/layout.jsx + app/page.jsx + app/AppShell.jsx
     ├── App.jsx            # 顶层：4 个标签页 + 3 个浮层 + 页面切换
     ├── index.css          # 全局样式 + CSS 变量
     ├── context/
     │   └── AppContext.jsx # 全局状态中枢（登录、导航栈、字体、AI 生成路由等）
-    ├── components/        # 通用组件（UIComponents / SentenceDetail 等）
+    ├── components/        # 通用组件（UIComponents / SentenceDetail / WordBubble / ThaiSentence）
     ├── icons/             # 自定义图标
     ├── data/              # mock 静态数据（mockData / phraseData）
     ├── utils/             # 泰语分词、TTS 朗读
-    ├── pages/             # 页面
+    │   ├── thaiToken.ts   # ⭐ 纯前端 newmm 泰语分词（normalize+正向最长匹配+音节兜底+自定义词库+缓存/防抖客户端）
+    │   └── tts.js / thaiSegment.js
+    ├── screens/           # 页面（原 pages/，改名避免被 Next Pages Router 误当路由预渲染）
     │   ├── HomePage / WordBookPage / LearnPage / ProfilePage  # 4 大标签页
     │   ├── LoginPage / ResetPasswordPage                       # 登录相关
     │   ├── WordDetailPage / UnknownWordPage                    # 词条详情 / AI 未知词
@@ -102,12 +109,14 @@ thaidict/
 
 1. **数据层单一入口**：所有页面**只**从 `src/lib/db/*` 取数据，**绝不**在页面里直接写数据库/localStorage 逻辑。
 2. **mock / 真实自动切换**：`src/lib/supabase.js` 的 `isSupabaseConfigured` 根据环境变量
-   `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` 是否存在来判断。
+   `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` 是否存在来判断
+   （Next.js 中客户端可读的环境变量必须加 `NEXT_PUBLIC_` 前缀）。
    - 没配 → 走 mock（localStorage）
    - 配了 → 走真实 Supabase
    - **页面代码零改动**即可上线。这是整个项目的设计核心。
 3. **无路由库**：不用 react-router。用状态驱动导航：4 个标签页 + 3 个浮层 + `navStack`/`navForward` 导航栈（支持前进/后退）。
-4. **子页面位置**：「我的」下的子页面放在 `src/pages/subsections/`，
+4. **子页面位置**：「我的」下的子页面放在 `src/screens/subsections/`（原 `src/pages/`，
+   Next 的 Pages Router 会把 `pages/` 下每个文件当路由预渲染，故改名为 `screens/`），
    引用通用组件用 `../../components/UIComponents.jsx`（注意是两层 `../../`）。
 5. **mock 存储键约定**：
    - 用户私有集合：`getUserColl(userId, key)` / `setUserColl`
@@ -142,6 +151,13 @@ thaidict/
   内部 `flex:1` 才能拿到约束高度，`overflow-y:auto` 才生效。
 - **subsections 引用路径**：通用组件是 `../../components/...`，工具函数在 `mock/store.js` 或 `utils.js`，
   **不能**从 `db/index.js` 导入 `getGlobal/enrichSegmented/transformWordData/getTodayCST`。
+- **Next.js 客户端环境变量**：在浏览器端读取的环境变量必须加 `NEXT_PUBLIC_` 前缀
+  （原 Vite 的 `VITE_*` 在 Next 里不生效，`supabase.js` 已改为 `NEXT_PUBLIC_SUPABASE_*`）。
+- **Next.js 全量客户端渲染**：原 Vite SPA 全靠 `window/localStorage`，直接 SSR 会崩。
+  用 `app/page.jsx` 的 `dynamic(() => import('./AppShell'), { ssr: false })` 包成纯客户端，
+  配合 `<div id="root">` 复用原 `#root` 手机框样式，行为与原 Vite 完全一致。
+- **`import.meta` 在 Next 不可用**：任何 `import.meta.env` 都要改成 `process.env.NEXT_PUBLIC_*`，
+  `next build` 对 `import.meta.env` 会直接报语法错误。
 
 ---
 
@@ -153,8 +169,9 @@ thaidict/
   - `fix: 修复 AppProvider 中 userId TDZ 报错`
   - `feat: 字体设置、权限组、AI 审批、收藏弹层修复`
   - `feat: 完成核心页面与 9 项新功能（Phase 3）`
-- 上线目标：Vercel（域名 thaidict.vercel.app）+ GitHub 自动部署。
-  需部署 4 个 Edge Function：`ai-proxy` / `send-otp` / `verify-otp` / `send-reminder`。
+- 上线目标：Vercel（Next.js 自动部署，**无需 vercel.json**，Vercel 会按 `next` 依赖自动识别）。
+  后端接口用 **Next Route Handlers** 实现（对应原计划的 4 个 Edge Function）：
+  `app/api/ai-proxy`、`app/api/send-otp`、`app/api/verify-otp`、`app/api/send-reminder`。
   真实上线前需新建数据表：`user_roles`、`pending_approvals`（字段见 `roles.js` / `approvals.js`）。
 
 ---

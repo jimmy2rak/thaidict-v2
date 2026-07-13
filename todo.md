@@ -9,6 +9,7 @@
 ## 一、一句话说明这个项目是什么
 
 这是一个**中泰双语词典网页应用**（中文 ↔ 泰语）。
+技术栈为 **Next.js 14（App Router）+ React 18**（2026-07-13 已从 Vite 迁移到 Next.js）。
 用户可以：查词、看例句、听发音、收藏单词、写学习日记、做练习、看学习统计、AI 智能查词等。
 
 - 现在处于「**本地开发阶段**」：所有数据都是**假数据（mock 模拟数据）**，存在浏览器里，方便一个人先把功能全部做完。
@@ -51,6 +52,7 @@ npm run dev     # 启动开发服务器，访问 http://localhost:3000
 | 阶段 2 | 登录/注册页、主框架（4 个标签页 + 页面切换） | ✅ 已完成 |
 | 阶段 3 | 核心页面 + 9 项功能（词典/单词本/学习/我的 全部页面） | ✅ 已完成 |
 | 阶段 3.5 | 两轮新需求迭代（共 10 项，见下方明细） | ✅ 已完成 |
+| 阶段 3.6 | **从 Vite 迁移到 Next.js 14（App Router）**：入口改 `app/`（layout/page/AppShell，ssr:false 客户端渲染）；`src/pages`→`src/screens` 避免被 Pages Router 误当路由；`supabase.js` 改 `NEXT_PUBLIC_*`；生产构建通过 | ✅ 已完成 |
 | 阶段 4 | Bug 逐项核对（A~G 类历史 Bug 是否已规避） | ⏳ 待办 |
 | 阶段 5 | 整体自测 + 打磨（交互细节、样式统一） | ⏳ 待办 |
 | 阶段 6 | 接入真实 Supabase + 部署上线（Vercel） | ⏳ 待办 |
@@ -108,9 +110,10 @@ npm run dev     # 启动开发服务器，访问 http://localhost:3000
 
 ### 阶段 6：接入真实 Supabase + 上线
 - [ ] 在 Supabase 建库，创建所有数据表（重点：`user_roles`、`pending_approvals` 是新表）。
-- [ ] 配置环境变量 `.env`：`VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`。
+- [ ] 配置环境变量 `.env.local`：`NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`。
       （代码会自动检测：有这两个变量就用真实数据库，没有就用 mock，页面**零改动**。）
-- [ ] 部署 4 个 Edge Function：`ai-proxy`、`send-otp`、`verify-otp`、`send-reminder`。
+- [ ] 用 Next Route Handlers 实现 4 个后端接口（对应原 Edge Function）：
+      `app/api/ai-proxy`、`app/api/send-otp`、`app/api/verify-otp`、`app/api/send-reminder`。
 - [ ] 审批中心批准逻辑接入「腾讯翻译君 API」做校验（预留接入点在 `ApprovalCenterSection` 的 `onApprove`）。
 - [ ] 部署到 Vercel（目标域名 thaidict.vercel.app），配置 GitHub 自动部署。
 
@@ -125,4 +128,4 @@ npm run dev     # 启动开发服务器，访问 http://localhost:3000
 1. **项目路径包含中文「开发者」**，写文件/命令时务必核对，别误写成「developer」。
 2. 现在**没有连接远程 git 仓库**，只在本地 commit；等阶段 6 上线时再加 remote 并 push。
 3. 所有页面只依赖 `src/lib/db/*`，**不要**在页面里直接写数据库逻辑，方便日后无痛切换真实数据库。
-4. 开发服务器端口固定 **3000**（在 `vite.config.js` 里设定）。
+4. 开发服务器端口固定 **3000**（`next dev` 默认端口）。
