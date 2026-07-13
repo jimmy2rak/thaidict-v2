@@ -202,7 +202,7 @@ function DailyWordCard({ word, onRefresh, onTap, refreshing, rate }) {
   const w = data || word
   const first = (w.senses && w.senses[0]) || {}
   return (
-    <Card style={{ marginBottom: 12 }}>
+    <Card style={{ marginBottom: 12, cursor: 'pointer' }} onClick={() => onTap(w.word)}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }} onClick={() => onTap(w.word)}>
           <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)' }}>{w.word}</div>
@@ -214,7 +214,7 @@ function DailyWordCard({ word, onRefresh, onTap, refreshing, rate }) {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} onClick={e => e.stopPropagation()}>
           <IconBtn onClick={() => speak(w.word, { rate })}><Volume2 size={18} /></IconBtn>
           <IconBtn onClick={onRefresh} disabled={refreshing}><RefreshCw size={16} className={refreshing ? 'spin' : ''} /></IconBtn>
         </div>
