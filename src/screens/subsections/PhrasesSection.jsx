@@ -1,19 +1,32 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, BookText, ChevronRight } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
-import { getSentencesByCategory } from '../../lib/db/index.js'
+import { getSentencesByCategory, getSentenceBookmarks, bookmarkSentence } from '../../lib/db/index.js'
 import { getGlobal } from '../../lib/mock/store.js'
-import { IconButton, Card, Spinner, EmptyState, Badge } from '../../components/UIComponents.jsx'
+import { IconButton, Spinner, EmptyState } from '../../components/UIComponents.jsx'
+import PhraseCard from '../../components/PhraseCard.jsx'
+
+const CATEGORIES = [
+  { key: null, label: '全部' },
+  { key: 'idioms', label: '成语' },
+  { key: 'buddhist', label: '佛学' },
+  { key: 'daily', label: '日常' },
+]
+const CAT_LABEL = { idioms: '成语', buddhist: '佛学', daily: '日常' }
 
 export default function PhrasesSection({ onClose, onOpen }) {
   const app = useApp()
+  const { userId, handleWordTap } = app
+
   const [category, setCategory] = useState(null)
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)
+  const [bookmarks, setBookmarks] = useState(new Set())
 
-  const categories = useMemo(() => {
+  // 分类列表（用于校验哪些分类有数据）
+  const activeCats = useMemo(() => {
     const all = getGlobal('sentences', [])
-    return [...new Set(all.map((s) => s.category).filter(Boolean))]
+    return new Set(all.map((s) => s.category).filter(Boolean))
   }, [])
 
   useEffect(() => {
@@ -24,6 +37,23 @@ export default function PhrasesSection({ onClose, onOpen }) {
     })
   }, [category])
 
+  useEffect(() => {
+    if (!userId) return
+    getSentenceBookmarks(userId).then((arr) => {
+      setBookmarks(new Set((arr || []).map((b) => b.sentence_id || b.id)))
+    })
+  }, [userId])
+
+  const visibleCats = CATEGORIES.filter((c) => c.key === null || activeCats.has(c.key))
+
+  const handleBookmark = async (sentenceId) => {
+    if (!userId) return app.toast('请先登录')
+    if (bookmarks.has(sentenceId)) return
+    await bookmarkSentence(userId, sentenceId)
+    setBookmarks((prev) => new Set(prev).add(sentenceId))
+    app.toast('已收藏')
+  }
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
@@ -32,11 +62,34 @@ export default function PhrasesSection({ onClose, onOpen }) {
         <div style={{ width: 38 }} />
       </div>
 
-      <div style={{ display: 'flex', gap: 6, padding: '10px 12px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-        <Chip active={category === null} onClick={() => setCategory(null)}>全部</Chip>
-        {categories.map((c) => (
-          <Chip key={c} active={category === c} onClick={() => setCategory(c)}>{c}</Chip>
-        ))}
+      {/* 分类切换：一个框里左右的按钮 */}
+      <div style={{ padding: '10px 16px' }}>
+        <div style={{
+          display: 'inline-flex',
+          border: '1px solid var(--c-p200)',
+          borderRadius: 10,
+          overflow: 'hidden',
+          background: 'var(--c-surface)',
+        }}>
+          {visibleCats.map((c) => (
+            <button
+              key={c.key ?? 'all'}
+              onClick={() => setCategory(c.key)}
+              style={{
+                padding: '7px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                border: 'none',
+                borderRight: '1px solid var(--c-p200)',
+                background: category === c.key ? 'var(--c-teal)' : 'var(--c-surface)',
+                color: category === c.key ? '#fff' : 'var(--c-p500)',
+                cursor: 'pointer',
+              }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="scroll-y" style={{ flex: 1, padding: '0 16px 16px' }}>
@@ -47,38 +100,19 @@ export default function PhrasesSection({ onClose, onOpen }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {list.map((s) => (
-              <Card key={s.id} onClick={() => onOpen && onOpen(s)} style={{ cursor: 'pointer' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontFamily: 'var(--th-font)', fontSize: 15, color: 'var(--c-p800)' }}>{s.thai}</span>
-                  <ChevronRight size={16} color="var(--c-s500)" />
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 2 }}>{s.zh}</div>
-                {s.category && <div style={{ marginTop: 6 }}><Badge color="var(--c-gold)">{s.category}</Badge></div>}
-              </Card>
+              <PhraseCard
+                key={s.id}
+                item={s}
+                onOpen={() => onOpen && onOpen(s)}
+                onWordClick={handleWordTap}
+                onBookmark={() => handleBookmark(s.id)}
+                bookmarked={bookmarks.has(s.id)}
+                showCategory
+              />
             ))}
           </div>
         )}
       </div>
     </div>
-  )
-}
-
-function Chip({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        flexShrink: 0,
-        padding: '6px 14px',
-        borderRadius: 999,
-        fontSize: 13,
-        fontWeight: 600,
-        border: '1px solid ' + (active ? 'var(--c-teal)' : 'var(--c-p200)'),
-        background: active ? 'color-mix(in srgb, var(--c-teal) 14%, transparent)' : 'var(--c-surface)',
-        color: active ? 'var(--c-teal)' : 'var(--c-p500)',
-      }}
-    >
-      {children}
-    </button>
   )
 }

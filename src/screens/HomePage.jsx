@@ -9,11 +9,17 @@ import {
   getBookmarks,
   getStreak,
   getMonthlyCheckinStreak,
+  isBookmarked,
+  addBookmark,
+  removeBookmark,
+  isSentenceBookmarked,
+  bookmarkSentence,
 } from '../lib/db/index.js'
 import { speak } from '../utils/tts.js'
-import { transformWordData, enrichSegmented } from '../lib/utils.js'
-import { Card, Badge, Spinner, WordToken, EmptyState } from '../components/UIComponents.jsx'
-import { getGlobal } from '../lib/mock/store.js'
+import { transformWordData } from '../lib/utils.js'
+import { Card, Badge, Spinner, EmptyState } from '../components/UIComponents.jsx'
+import ThaiSentence from '../components/ThaiSentence.jsx'
+import PhraseCard from '../components/PhraseCard.jsx'
 import PhrasesSection from './subsections/PhrasesSection.jsx'
 import PhraseDetailSection from './subsections/PhraseDetailSection.jsx'
 
@@ -69,11 +75,6 @@ export default function HomePage() {
     setRefreshing(false)
   }
 
-  const dictMap = getGlobal('dictionary', []).reduce((m, r) => {
-    m[r.word.toLowerCase()] = { word: r.word, meanings: (r.senses || []).map((s) => s.meaning) }
-    return m
-  }, {})
-
   return (
     <div className="scroll-y" style={{ flex: 1, padding: '16px 16px 24px' }}>
       {/* 统计栏 */}
@@ -122,15 +123,16 @@ export default function HomePage() {
             onTap={handleWordTap}
             refreshing={refreshing}
             rate={rate}
+            userId={userId}
           />
           {/* 每日一句 */}
           <DailySentenceCard
             sentence={daily.sentence}
-            dictMap={dictMap}
             onRefresh={() => onRefresh('sentence')}
             onToken={(w) => handleWordTap(w)}
             onOpen={() => daily.sentence && setSelectedSentence(daily.sentence)}
             refreshing={refreshing}
+            userId={userId}
           />
           {/* 短语库入口 */}
           <Card onClick={() => setPhrasesOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -196,17 +198,39 @@ function SearchResults({ results, onTap, searching, query, onAiSearch }) {
   )
 }
 
-function DailyWordCard({ word, onRefresh, onTap, refreshing, rate }) {
+function DailyWordCard({ word, onRefresh, onTap, refreshing, rate, userId }) {
+  // hooks 必须放在任何 early return 之前，避免 word 由 null 变为有值时 hooks 数量不一致
+  const [bookmarked, setBookmarked] = React.useState(false)
+  React.useEffect(() => {
+    const w = word ? (typeof word === 'object' ? (word.word || '') : word) : ''
+    if (userId && w) isBookmarked(userId, w).then(setBookmarked)
+  }, [userId, word])
+
   if (!word) return null
   const data = typeof word === 'object' ? transformWordData(word) : null
   const w = data || word
   const first = (w.senses && w.senses[0]) || {}
+
+  const toggleBookmark = async (e) => {
+    e?.stopPropagation?.()
+    if (!userId) return
+    if (bookmarked) {
+      await removeBookmark(userId, w.word)
+      setBookmarked(false)
+    } else {
+      await addBookmark(userId, w.word)
+      setBookmarked(true)
+    }
+  }
+
   return (
     <Card style={{ marginBottom: 12, cursor: 'pointer' }} onClick={() => onTap(w.word)}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }} onClick={() => onTap(w.word)}>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)' }}>{w.word}</div>
-          {w.romanization && <div style={{ fontSize: 13, color: 'var(--c-p500)' }}>{w.romanization}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)' }}>
+            <ThaiSentence text={w.word} type="word" onWordClick={onTap} style={{ fontSize: 20, fontWeight: 700 }} />
+          </div>
+          {w.romanization && <div style={{ fontSize: 13, color: 'var(--c-p500)', marginTop: 2 }}>{w.romanization}</div>}
           <div style={{ fontSize: 14, color: 'var(--c-p600)', marginTop: 4 }}>{first.meaning}</div>
           {first.examples?.[0] && (
             <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 4 }}>
@@ -216,6 +240,9 @@ function DailyWordCard({ word, onRefresh, onTap, refreshing, rate }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} onClick={e => e.stopPropagation()}>
           <IconBtn onClick={() => speak(w.word, { rate })}><Volume2 size={18} /></IconBtn>
+          <IconBtn onClick={toggleBookmark} active={bookmarked}>
+            <Star size={18} fill={bookmarked ? 'var(--c-amber)' : 'none'} color={bookmarked ? 'var(--c-amber)' : 'var(--c-p600)'} />
+          </IconBtn>
           <IconBtn onClick={onRefresh} disabled={refreshing}><RefreshCw size={16} className={refreshing ? 'spin' : ''} /></IconBtn>
         </div>
       </div>
@@ -223,38 +250,56 @@ function DailyWordCard({ word, onRefresh, onTap, refreshing, rate }) {
   )
 }
 
-function DailySentenceCard({ sentence, dictMap, onRefresh, onToken, onOpen, refreshing }) {
+function DailySentenceCard({ sentence, onRefresh, onToken, onOpen, refreshing, userId }) {
+  // hooks 必须放在任何 early return 之前
+  const [bookmarked, setBookmarked] = React.useState(false)
+  React.useEffect(() => {
+    if (userId && sentence?.id) isSentenceBookmarked(userId, sentence.id).then(setBookmarked)
+  }, [userId, sentence])
+
   if (!sentence) return null
-  const segs = enrichSegmented(sentence.segmented || [], dictMap)
+
+  const toggleBookmark = async () => {
+    if (!userId) return
+    if (bookmarked) return
+    await bookmarkSentence(userId, sentence.id)
+    setBookmarked(true)
+  }
+
   return (
-    <Card style={{ marginBottom: 12, cursor: 'pointer' }} onClick={onOpen}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+    <Card style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <Badge color="var(--c-gold)">每日一句</Badge>
-        <IconBtn onClick={onRefresh} disabled={refreshing}><RefreshCw size={16} className={refreshing ? 'spin' : ''} /></IconBtn>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <IconBtn onClick={onRefresh} disabled={refreshing}><RefreshCw size={16} className={refreshing ? 'spin' : ''} /></IconBtn>
+        </div>
       </div>
-      <div style={{ fontFamily: 'var(--th-font)', fontSize: 16, color: 'var(--c-p800)', lineHeight: 1.5 }}>{sentence.thai}</div>
-      <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 2 }}>{sentence.zh}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: 8 }}>
-        {segs.map((s, i) => (
-          <WordToken key={i} text={s.text} meaning={s.meaning} onClick={() => onToken(s.text)} />
-        ))}
-      </div>
-      <button
-        onClick={onOpen}
-        style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 2, fontSize: 13, color: 'var(--c-info)', background: 'none', border: 'none' }}
-      >
-        查看详情 <ChevronRight size={14} />
-      </button>
+      <PhraseCard
+        item={sentence}
+        onOpen={onOpen}
+        onWordClick={onToken}
+        onBookmark={toggleBookmark}
+        bookmarked={bookmarked}
+        style={{ border: 'none', boxShadow: 'none', padding: 0 }}
+      />
     </Card>
   )
 }
 
-function IconBtn({ children, onClick, disabled }) {
+function IconBtn({ children, onClick, disabled, active }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 10, background: 'var(--c-p100)', border: 'none', color: 'var(--c-p700)', cursor: 'pointer', opacity: disabled ? 0.5 : 1 }}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 34, height: 34, borderRadius: 10,
+        background: active ? 'color-mix(in srgb, var(--c-amber) 16%, transparent)' : 'var(--c-p100)',
+        border: 'none',
+        color: active ? 'var(--c-amber)' : 'var(--c-p700)',
+        cursor: 'pointer',
+        opacity: disabled ? 0.5 : 1,
+      }}
     >
       {children}
     </button>

@@ -1,6 +1,6 @@
 // 模拟句子数据（sentences 表结构）。本地种子，上线由真实 Supabase 替代。
 // 字段：id, thai, zh, category('idioms'|'buddhist'|'daily'), difficulty(1-5),
-//       tags[], segmented[{text,meaning}], literal, note
+//       tags[], segmented[{text,meaning}], literal, actual, advice
 
 export const mockSentences = [
   // 成语 / 俗语
@@ -17,7 +17,8 @@ export const mockSentences = [
       { text: 'หัว', meaning: '头' },
     ],
     literal: '有两颗头的鸟',
-    note: '比喻意见不合、内部不团结的人或群体。',
+    actual: '形容意见不合、内部不团结的人或群体',
+    advice: '多用于批评团队内讧；带有贬义，口语中常说。',
   },
   {
     id: 2,
@@ -32,7 +33,8 @@ export const mockSentences = [
       { text: 'หวาน', meaning: '甜' },
     ],
     literal: '看着香蕉，眼睛却不甜',
-    note: '调侃某人白费力气、徒劳无功。',
+    actual: '比喻白费力气、徒劳无功',
+    advice: '朋友间开玩笑可用，语气轻松幽默。',
   },
   {
     id: 3,
@@ -47,7 +49,8 @@ export const mockSentences = [
       { text: 'ตัก', meaning: '舀' },
     ],
     literal: '潮水上涨时赶紧舀水',
-    note: '比喻趁机会好时抓紧行动。',
+    actual: '比喻趁机会好时抓紧行动',
+    advice: '常用于劝人把握时机，不要错过良机。',
   },
   // 佛学
   {
@@ -62,7 +65,8 @@ export const mockSentences = [
       { text: 'หน้าที่', meaning: '责任' },
     ],
     literal: '佛法即本分',
-    note: '提醒修行在日常本分之中。',
+    actual: '修行不在远处，就在日常尽好本分之中',
+    advice: '提醒初学者不要好高骛远，从身边事做起。',
   },
   {
     id: 5,
@@ -77,7 +81,8 @@ export const mockSentences = [
       { text: 'ถาวร', meaning: '恒久' },
     ],
     literal: '恒常行善',
-    note: '持续行善积德之意。',
+    actual: '持续不断地行善积德',
+    advice: '强调“坚持”二字，做好事贵在长久。',
   },
   // 日常
   {
@@ -94,7 +99,8 @@ export const mockSentences = [
       { text: 'ทุกวัน', meaning: '每天' },
     ],
     literal: '我去学校每天',
-    note: '',
+    actual: '我每天去学校',
+    advice: '泰语时间状语常放句末，初学者注意语序差异。',
   },
   {
     id: 7,
@@ -109,7 +115,8 @@ export const mockSentences = [
       { text: 'อร่อย', meaning: '好吃' },
     ],
     literal: '泰国食物很好吃',
-    note: '',
+    actual: '泰国菜很好吃',
+    advice: '“อร่อยมาก”是高频赞美句式，可直接套用。',
   },
   {
     id: 8,
@@ -119,11 +126,13 @@ export const mockSentences = [
     difficulty: 2,
     tags: ['日常', '学习'],
     segmented: [
+      { text: 'ผม', meaning: '我（男性）' },
       { text: 'ชอบ', meaning: '喜欢' },
       { text: 'เรียน', meaning: '学习' },
       { text: 'ภาษาไทย', meaning: '泰语' },
     ],
     literal: '我喜欢学习泰语',
-    note: '',
+    actual: '我喜欢学泰语',
+    advice: '男性自称用 ผม，女性用 ฉัน，注意场景选择。',
   },
 ]
