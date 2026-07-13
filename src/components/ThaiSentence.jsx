@@ -108,7 +108,10 @@ export default function ThaiSentence({
         <React.Fragment key={idx}>
           {t.type === 'word' ? (
             <u
-              onClick={(e) => handleWordClick(t.text, e)}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleWordClick(t.text, e)
+              }}
               style={{
                 cursor: 'pointer',
                 textDecoration: 'underline',

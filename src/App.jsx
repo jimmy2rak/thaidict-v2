@@ -71,9 +71,14 @@ function Overlay({ children }) {
         display: 'flex',
         flexDirection: 'column',
         animation: 'fadeIn 0.18s ease',
+        // 关键：父容器不拦截点击，让子元素自己决定是否接收事件。
+        // 否则某些浏览器下绝对定位层会覆盖并吞掉所有子元素点击。
+        pointerEvents: 'none',
       }}
     >
-      {children}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', pointerEvents: 'auto' }}>
+        {children}
+      </div>
     </div>
   )
 }

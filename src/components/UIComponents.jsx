@@ -17,7 +17,14 @@ export const COLORS = {
 export function Card({ children, style, onClick, noPad }) {
   return (
     <div
-      onClick={onClick}
+      onClick={
+        onClick
+          ? (e) => {
+              e.stopPropagation()
+              onClick(e)
+            }
+          : undefined
+      }
       style={{
         background: 'var(--c-surface)',
         borderRadius: 14,
@@ -84,7 +91,14 @@ export function Btn({ children, onClick, variant = 'primary', disabled, style, t
 export function IconButton({ onClick, title, active, children, style, disabled }) {
   return (
     <button
-      onClick={disabled ? undefined : onClick}
+      onClick={
+        disabled
+          ? undefined
+          : (e) => {
+              e.stopPropagation()
+              onClick?.(e)
+            }
+      }
       disabled={disabled}
       title={title}
       aria-label={title}
@@ -145,7 +159,10 @@ export function EmptyState({ icon, text }) {
 export function WordToken({ text, meaning, onClick, active }) {
   return (
     <button
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick?.(e)
+      }}
       style={{
         display: 'inline-flex',
         flexDirection: 'column',

@@ -15,7 +15,7 @@
 //      浏览器挂载完成（useEffect）后再渲染真正的 AppProvider + App。
 //   这样整棵组件树是普通的客户端 React 树，React 18 的事件委托会正常绑定，
 //   点击 / 输入全部恢复。
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { AppProvider } from '../src/context/AppContext.jsx'
 import App from '../src/App.jsx'
 
@@ -49,7 +49,10 @@ class ErrorBoundary extends React.Component {
 export default function AppShell() {
   // 挂载守卫：仅在浏览器挂载后渲染真实应用，避免 SSR 触碰 window/localStorage
   const [mounted, setMounted] = useState(false)
+  const initRef = useRef(false)
   useEffect(() => {
+    if (initRef.current) return
+    initRef.current = true
     setMounted(true)
   }, [])
 

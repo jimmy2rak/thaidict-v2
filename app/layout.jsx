@@ -10,7 +10,7 @@ export const metadata = {
   manifest: '/manifest.json',
   applicationName: '词笺',
   appleWebApp: {
-    capable: true,
+    capable: false,
     statusBarStyle: 'default',
     title: '词笺',
   },
