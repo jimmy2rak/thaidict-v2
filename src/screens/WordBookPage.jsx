@@ -24,11 +24,11 @@ export default function WordBookPage() {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '14px 16px 8px' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-p800)' }}>单词本</div>
+      <div style={{ padding: '12px 12px 6px' }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-p800)' }}>单词本</div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, padding: '0 12px 8px' }}>
+      <div style={{ display: 'flex', gap: 5, padding: '0 12px 6px' }}>
         {TABS.map((t) => {
           const active = tab === t.key && !detail
           const Icon = t.icon
@@ -37,20 +37,20 @@ export default function WordBookPage() {
               key={t.key}
               onClick={() => { setDetail(null); setTab(t.key) }}
               style={{
-                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 0',
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '7px 0',
                 borderRadius: 10, border: '1px solid ' + (active ? 'var(--c-teal)' : 'var(--c-p200)'),
                 background: active ? 'color-mix(in srgb, var(--c-teal) 12%, transparent)' : 'var(--c-surface)',
-                color: active ? 'var(--c-teal)' : 'var(--c-p500)', fontSize: 12, fontWeight: 600,
+                color: active ? 'var(--c-teal)' : 'var(--c-p500)', fontSize: 11, fontWeight: 600,
               }}
             >
-              <Icon size={18} />
+              <Icon size={17} />
               {t.label}
             </button>
           )
         })}
       </div>
 
-      <div className="scroll-y" style={{ flex: 1, padding: '4px 16px 20px' }}>
+      <div className="scroll-y" style={{ flex: 1, padding: '2px 14px 20px' }}>
         {!detail && tab === 'recent' && <RecentTab userId={userId} onTap={handleWordTap} />}
         {!detail && tab === 'wordfolders' && <FolderTab userId={userId} type="word" onOpen={(id, name) => setDetail({ type: 'wordfolder', id, name })} />}
         {!detail && tab === 'sentencefolders' && <FolderTab userId={userId} type="sentence" onOpen={(id, name) => setDetail({ type: 'sentencefolder', id, name })} />}
@@ -71,19 +71,19 @@ function RecentTab({ userId, onTap }) {
   if (list === null) return <CenterSpinner />
   if (list.length === 0) return <EmptyState icon="🕘" text="还没有查词记录" />
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {list.map((r) => (
         <Card key={r.word} onClick={() => onTap(r.word)} style={{ cursor: 'pointer' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--th-font)', fontSize: 17, fontWeight: 700, color: 'var(--c-p800)', lineHeight: 1.4 }}>{r.word}</div>
-              <div style={{ marginTop: 3 }}>
-                <ThaiSentence text={r.word} type="sentence" separator=" + " onWordClick={onTap} style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--c-p500)' }} />
+              <div style={{ fontFamily: 'var(--th-font)', fontSize: 16, fontWeight: 700, color: 'var(--c-p800)', lineHeight: 1.35 }}>{r.word}</div>
+              <div style={{ marginTop: 2 }}>
+                <ThaiSentence text={r.word} type="sentence" separator=" + " style={{ fontSize: 11, lineHeight: 1.45, color: 'var(--c-p500)' }} />
               </div>
             </div>
-            <span style={{ fontSize: 11, color: 'var(--c-p500)', flexShrink: 0, marginLeft: 8 }}>查 {r.lookup_count || 1} 次</span>
+            <span style={{ fontSize: 10, color: 'var(--c-p500)', flexShrink: 0, marginLeft: 6 }}>查 {r.lookup_count || 1} 次</span>
           </div>
-          <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 4 }}>{r.senses?.[0]?.meaning || ''}</div>
+          <div style={{ fontSize: 12, color: 'var(--c-p600)', marginTop: 2 }}>{r.senses?.[0]?.meaning || ''}</div>
         </Card>
       ))}
     </div>
@@ -100,13 +100,13 @@ function FolderTab({ userId, type, onOpen }) {
   if (folders === null) return <CenterSpinner />
   if (folders.length === 0) return <EmptyState icon="📁" text={type === 'word' ? '还没有单词夹，去词条页加入吧' : '还没有句子夹'} />
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {folders.map((f) => (
         <Card key={f.id} onClick={() => onOpen(f.id, f.name)} style={{ cursor: 'pointer' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 12, height: 12, borderRadius: 4, background: f.color, display: 'inline-block' }} />
-            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-p800)' }}>{f.name}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--c-p500)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: f.color, display: 'inline-block' }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-p800)' }}>{f.name}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--c-p500)' }}>
               {type === 'word' ? `${f.wordCount || 0} 词` : `${f.sentenceCount || 0} 句`}
             </span>
           </div>
@@ -124,12 +124,12 @@ function WordFolderDetail({ folderId, name, onBack, onTap }) {
   return (
     <DetailShell name={name} onBack={onBack}>
       {words.length === 0 ? <EmptyState icon="📭" text="文件夹为空" /> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {words.map((w, i) => (
             <Card key={i} onClick={() => onTap(w.word)} style={{ cursor: 'pointer' }}>
-              <div style={{ fontFamily: 'var(--th-font)', fontSize: 17, fontWeight: 700, color: 'var(--c-p800)', lineHeight: 1.4 }}>{w.word}</div>
-              <div style={{ marginTop: 3 }}>
-                <ThaiSentence text={w.word} type="sentence" separator=" + " onWordClick={onTap} style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--c-p500)' }} />
+              <div style={{ fontFamily: 'var(--th-font)', fontSize: 16, fontWeight: 700, color: 'var(--c-p800)', lineHeight: 1.35 }}>{w.word}</div>
+              <div style={{ marginTop: 2 }}>
+                <ThaiSentence text={w.word} type="sentence" separator=" + " style={{ fontSize: 11, lineHeight: 1.45, color: 'var(--c-p500)' }} />
               </div>
             </Card>
           ))}
@@ -152,13 +152,12 @@ function SentenceFolderDetail({ folderId, name, onBack, onOpen }) {
   return (
     <DetailShell name={name} onBack={onBack}>
       {sentences.length === 0 ? <EmptyState icon="📭" text="文件夹为空" /> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {sentences.map((s) => (
             <PhraseCard
               key={s.id}
               item={s}
               onOpen={() => onOpen({ type: 'sentence', sentence: s })}
-              onWordClick={(w) => onOpen({ type: 'word', word: w })}
             />
           ))}
         </div>
@@ -216,7 +215,7 @@ function BookDetail({ bookId, name, userId, onBack, onTap, toast }) {
 // ---------- 通用 ----------
 function DetailShell({ name, onBack, children }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <IconButton onClick={onBack} title="返回"><ArrowLeft size={18} /></IconButton>
         <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>{name}</span>

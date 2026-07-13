@@ -56,14 +56,14 @@ export default function PhrasesSection({ onClose, onOpen }) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 6px', borderBottom: '1px solid var(--c-p100)' }}>
         <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>短语库</div>
         <div style={{ width: 38 }} />
       </div>
 
       {/* 分类切换：一个框里左右的按钮 */}
-      <div style={{ padding: '10px 16px' }}>
+      <div style={{ padding: '8px 14px' }}>
         <div style={{
           display: 'inline-flex',
           border: '1px solid var(--c-p200)',
@@ -76,8 +76,8 @@ export default function PhrasesSection({ onClose, onOpen }) {
               key={c.key ?? 'all'}
               onClick={() => setCategory(c.key)}
               style={{
-                padding: '7px 16px',
-                fontSize: 13,
+                padding: '6px 14px',
+                fontSize: 12,
                 fontWeight: 600,
                 border: 'none',
                 borderRight: '1px solid var(--c-p200)',
@@ -92,19 +92,18 @@ export default function PhrasesSection({ onClose, onOpen }) {
         </div>
       </div>
 
-      <div className="scroll-y" style={{ flex: 1, padding: '0 16px 16px' }}>
+      <div className="scroll-y" style={{ flex: 1, padding: '0 14px 14px' }}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>
         ) : list.length === 0 ? (
           <EmptyState icon="📚" text="该分类下暂无短语" />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {list.map((s) => (
               <PhraseCard
                 key={s.id}
                 item={s}
                 onOpen={() => onOpen && onOpen(s)}
-                onWordClick={handleWordTap}
                 onBookmark={() => handleBookmark(s.id)}
                 bookmarked={bookmarks.has(s.id)}
                 showCategory

@@ -13,10 +13,10 @@ import UnknownWordPage from './screens/UnknownWordPage.jsx'
 import SentenceDetail from './components/SentenceDetail.jsx'
 
 const TABS = [
-  { key: 'home', label: '首页', icon: Home },
-  { key: 'words', label: '单词本', icon: BookOpen },
-  { key: 'learn', label: '学习', icon: GraduationCap },
-  { key: 'me', label: '我的', icon: User },
+  { key: 'home', label: '首页', icon: Home, color: 'var(--c-teal)' },
+  { key: 'words', label: '单词本', icon: BookOpen, color: 'var(--c-info)' },
+  { key: 'learn', label: '学习', icon: GraduationCap, color: 'var(--c-gold)' },
+  { key: 'me', label: '我的', icon: User, color: 'var(--c-rose)' },
 ]
 
 function TabBar({ page, onChange }) {
@@ -48,10 +48,10 @@ function TabBar({ page, onChange }) {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: active ? 'var(--c-primary)' : 'var(--c-s500)',
+              color: active ? t.color : 'var(--c-s500)',
             }}
           >
-            <Icon size={22} strokeWidth={1.6} />
+            <Icon size={22} strokeWidth={active ? 2.2 : 1.6} />
             <span style={{ fontSize: 10, fontWeight: active ? 700 : 500 }}>{t.label}</span>
           </button>
         )

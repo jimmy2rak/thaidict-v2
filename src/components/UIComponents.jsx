@@ -27,8 +27,8 @@ export function Card({ children, style, onClick, noPad }) {
       }
       style={{
         background: 'var(--c-surface)',
-        borderRadius: 'var(--radius-lg)',
-        padding: noPad ? 0 : '18px 16px',
+        borderRadius: 'var(--radius-md)',
+        padding: noPad ? 0 : '12px 14px',
         border: 'var(--border-thin)',
         boxShadow: 'var(--shadow-card)',
         ...style,

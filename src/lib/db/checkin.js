@@ -88,12 +88,12 @@ export async function createCheckinTask(userId, task) {
   return data
 }
 
-export async function updateCheckinTask(taskId, updates) {
+export async function updateCheckinTask(userId, taskId, updates) {
   if (!isSupabaseConfigured) {
-    const list = getUserColl('__', 'checkin_tasks', [])
+    const list = getUserColl(userId || '__', 'checkin_tasks', [])
     const t = list.find((x) => x.id === taskId)
     if (t) Object.assign(t, updates)
-    setUserColl('__', 'checkin_tasks', list)
+    setUserColl(userId || '__', 'checkin_tasks', list)
     return t
   }
   if (!supabase) return null
@@ -103,8 +103,8 @@ export async function updateCheckinTask(taskId, updates) {
   return data
 }
 
-export async function deleteCheckinTask(taskId) {
-  return updateCheckinTask(taskId, { is_active: false })
+export async function deleteCheckinTask(userId, taskId) {
+  return updateCheckinTask(userId, taskId, { is_active: false })
 }
 
 export async function getCheckinCompletions(userId, date) {
@@ -123,7 +123,7 @@ export async function getCheckinCompletions(userId, date) {
 // 切换打卡完成状态（Bug B-6 原子累加 study_minutes）
 export async function toggleCheckinTaskCompletion(userId, taskId, date, completed) {
   if (!isSupabaseConfigured) {
-    const tasks = getUserColl('__', 'checkin_tasks', [])
+    const tasks = getUserColl(userId || '__', 'checkin_tasks', [])
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return []
     const completions = mockCompletions(userId)

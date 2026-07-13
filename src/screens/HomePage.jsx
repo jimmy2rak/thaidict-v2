@@ -77,9 +77,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: '16px 16px 24px' }}>
+    <div className="scroll-y" style={{ flex: 1, padding: '12px 14px 20px' }}>
       {/* 品牌头部（新中式素雅） */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
           <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--zh-serif)', color: 'var(--c-p800)', letterSpacing: 3 }}>词笺</div>
           <div style={{ fontSize: 11, color: 'var(--c-p500)', letterSpacing: 2, marginTop: 3 }}>中泰双语 · 温柔相伴</div>
@@ -88,7 +88,7 @@ export default function HomePage() {
       </div>
 
       {/* 统计栏 */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
         <Stat icon={Flame} value={stats.streak} label="连续打卡" color="var(--c-gold)" />
         <Stat icon={BookA} value={stats.dict} label="词典词数" color="var(--c-teal)" />
         <Stat icon={Star} value={stats.bookmarks} label="收藏" color="var(--c-amber)" />
@@ -96,24 +96,24 @@ export default function HomePage() {
       </div>
 
       {/* 搜索 */}
-      <div style={{ position: 'relative', marginBottom: 14 }}>
-        <Search size={18} color="var(--c-s500)" style={{ position: 'absolute', left: 14, top: 13 }} />
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <Search size={17} color="var(--c-s500)" style={{ position: 'absolute', left: 12, top: 11 }} />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="搜索泰语单词、中文…"
           style={{
             width: '100%',
-            padding: '12px 14px 12px 42px',
+            padding: '10px 12px 10px 38px',
             border: '1px solid var(--c-p200)',
             borderRadius: 14,
-            fontSize: 15,
+            fontSize: 14,
             background: 'var(--c-surface)',
             color: 'var(--c-p800)',
             outline: 'none',
           }}
         />
-        {searching && <Spinner size={16} color="var(--c-teal)" style={{ position: 'absolute', right: 14, top: 14 }} />}
+        {searching && <Spinner size={16} color="var(--c-teal)" style={{ position: 'absolute', right: 12, top: 12 }} />}
       </div>
 
       {query.trim() ? (
@@ -139,13 +139,12 @@ export default function HomePage() {
           <DailySentenceCard
             sentence={daily.sentence}
             onRefresh={() => onRefresh('sentence')}
-            onToken={(w) => handleWordTap(w)}
             onOpen={() => daily.sentence && setSelectedSentence(daily.sentence)}
             refreshing={refreshing}
             userId={userId}
           />
           {/* 短语库入口 */}
-          <Card onClick={() => setPhrasesOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Card onClick={() => setPhrasesOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
             <span style={{ width: 40, height: 40, borderRadius: 12, background: 'color-mix(in srgb, var(--c-gold) 14%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--c-gold)' }}>
               <LeafLine size={24} />
             </span>
@@ -163,10 +162,10 @@ export default function HomePage() {
 
 function Stat({ icon: Icon, value, label, color }) {
   return (
-    <Card style={{ flex: 1, padding: '10px 8px', textAlign: 'center' }}>
-      <Icon size={18} color={color} />
-      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-p800)', marginTop: 2 }}>{value}</div>
-      <div style={{ fontSize: 10, color: 'var(--c-p500)' }}>{label}</div>
+    <Card style={{ flex: 1, padding: '8px 6px', textAlign: 'center' }}>
+      <Icon size={16} color={color} />
+      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-p800)', marginTop: 1 }}>{value}</div>
+      <div style={{ fontSize: 9, color: 'var(--c-p500)' }}>{label}</div>
     </Card>
   )
 }
@@ -236,33 +235,33 @@ function DailyWordCard({ word, onRefresh, onTap, refreshing, rate, userId }) {
   }
 
   return (
-    <Card style={{ marginBottom: 12, cursor: 'pointer' }} onClick={() => onTap(w.word)}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+    <Card style={{ marginBottom: 10, cursor: 'pointer' }} onClick={() => onTap(w.word)}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)' }}>
-            <ThaiSentence text={w.word} type="word" onWordClick={onTap} style={{ fontSize: 20, fontWeight: 700 }} />
+          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)' }}>
+            <ThaiSentence text={w.word} type="word" style={{ fontSize: 18, fontWeight: 700 }} />
           </div>
-          {w.romanization && <div style={{ fontSize: 13, color: 'var(--c-p500)', marginTop: 2 }}>{w.romanization}</div>}
-          <div style={{ fontSize: 14, color: 'var(--c-p600)', marginTop: 4 }}>{first.meaning}</div>
+          {w.romanization && <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 1 }}>{w.romanization}</div>}
+          <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 2 }}>{first.meaning}</div>
           {first.examples?.[0] && (
-            <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: 'var(--c-p500)', marginTop: 2 }}>
               {first.examples[0].thai} · {first.examples[0].zh}
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} onClick={e => e.stopPropagation()}>
-          <IconBtn onClick={() => speak(w.word, { rate })}><Volume2 size={18} /></IconBtn>
-          <IconBtn onClick={toggleBookmark} active={bookmarked}>
-            <Star size={18} fill={bookmarked ? 'var(--c-amber)' : 'none'} color={bookmarked ? 'var(--c-amber)' : 'var(--c-p600)'} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }} onClick={e => e.stopPropagation()}>
+          <IconBtn onClick={() => speak(w.word, { rate })} style={{ width: 32, height: 32 }}><Volume2 size={16} /></IconBtn>
+          <IconBtn onClick={toggleBookmark} active={bookmarked} style={{ width: 32, height: 32 }}>
+            <Star size={16} fill={bookmarked ? 'var(--c-amber)' : 'none'} color={bookmarked ? 'var(--c-amber)' : 'var(--c-p600)'} />
           </IconBtn>
-          <IconBtn onClick={onRefresh} disabled={refreshing}><RefreshCw size={16} className={refreshing ? 'spin' : ''} /></IconBtn>
+          <IconBtn onClick={onRefresh} disabled={refreshing} style={{ width: 32, height: 32 }}><RefreshCw size={15} className={refreshing ? 'spin' : ''} /></IconBtn>
         </div>
       </div>
     </Card>
   )
 }
 
-function DailySentenceCard({ sentence, onRefresh, onToken, onOpen, refreshing, userId }) {
+function DailySentenceCard({ sentence, onRefresh, onOpen, refreshing, userId }) {
   // hooks 必须放在任何 early return 之前
   const [bookmarked, setBookmarked] = React.useState(false)
   React.useEffect(() => {
@@ -279,8 +278,8 @@ function DailySentenceCard({ sentence, onRefresh, onToken, onOpen, refreshing, u
   }
 
   return (
-    <Card style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+    <Card style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <BowlLine size={22} color="var(--c-primary)" style={{ opacity: 0.7 }} />
           <Badge color="var(--c-gold)">每日一句</Badge>
@@ -292,7 +291,6 @@ function DailySentenceCard({ sentence, onRefresh, onToken, onOpen, refreshing, u
       <PhraseCard
         item={sentence}
         onOpen={onOpen}
-        onWordClick={onToken}
         onBookmark={toggleBookmark}
         bookmarked={bookmarked}
         style={{ border: 'none', boxShadow: 'none', padding: 0 }}

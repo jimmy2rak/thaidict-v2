@@ -17,10 +17,11 @@ Next.js 14 App Router + React 18（JSX，非 TS）。当前本地 mock 阶段，
 5. mock 存储：用户私有 `getUserColl/setUserColl`；全局用 `getGlobal/setGlobal`。
 6. 权限 `super_admin>admin>user`；AI 词条→`pending_approvals`→审批后入主词典。
 
-## 设计系统（2026-07-13 新中式奶油轻泰式极简）
-- 底色 `--c-bg #F6F1E7`、卡面 `--c-surface #FCF9F2`、文字 `--c-p800 #423A31`。
-- 主色 `--c-primary #9A8467`；功能色 `--c-teal #9FB08E` / `--c-gold #C2A878` / `--c-rose #C08A7A` / `--c-info #8FA3B0` / `--c-amber #C9A86A`。
-- 圆角 `--radius-lg 24px`；按钮：primary 实线描边、secondary 虚线描边。
+## 设计系统（2026-07-13 新中式奶油轻泰式极简 · 补强版）
+- 底色 `--c-bg #F8F5EF`（更淡）、卡面 `--c-surface #FEFDFB`、文字 `--c-p800 #433B32`。
+- 主色 `--c-primary #A68A5B`（更鲜艳）；功能色 `--c-teal #7FBF6E` / `--c-gold #D4A84A` / `--c-rose #D36B58` / `--c-info #5FA3C2` / `--c-amber #E0B040`。
+- 圆角：Card 用 `--radius-md 18px`（原 lg 24 已弃用）；Card 内边距 `12px 14px`（原 18px 16px）；按钮：primary 实线描边、secondary 虚线描边。
+- 底部 Tab 彩色：home=teal / words=info / learn=gold / me=rose（`src/App.jsx` 的 `TABS.color`）。
 - 装饰：`src/components/Decorations.jsx`（佛塔/粽叶/碗盏）。旧色值已全局替换，新增代码勿用。
 
 ## 踩坑（别再犯）
@@ -34,5 +35,5 @@ Next.js 14 App Router + React 18（JSX，非 TS）。当前本地 mock 阶段，
 - favicon 用 SVG 消除 `/favicon.ico` 404；viewport 已移除 `maximumScale`/`user-scalable`。
 
 ## 阶段进度
-阶段 1~3.6 ✅；阶段 4 ✅（A~G Bug 核对完成）；阶段 5 ✅（新中式奶油风格改造完成）。
+阶段 1~3.6 ✅；阶段 4 ✅（A~G Bug 核对完成）；阶段 5 ✅（新中式奶油风格改造 + 补强：紧凑卡片、Tab 彩色、配色调鲜艳淡背景、学习中心打卡/调整计划、学习笔记联动）。
 下一步：阶段 6（接 Supabase + Vercel，需建 `user_roles`/`pending_approvals` 表 + 4 个 `app/api/*` Route Handlers）。

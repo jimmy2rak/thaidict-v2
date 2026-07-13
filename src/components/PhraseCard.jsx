@@ -15,7 +15,6 @@ import { speak } from '../utils/tts.js'
  * Props：
  *   item        : { thai, zh, category?, tags?, ... }
  *   onOpen      : () => void    点击卡片主体
- *   onWordClick : (word) => void  点击单词（通常传 handleWordTap）
  *   onBookmark  : () => void    收藏按钮
  *   bookmarked  : boolean
  *   showCategory: boolean       是否显示 category badge
@@ -24,7 +23,6 @@ import { speak } from '../utils/tts.js'
 export default function PhraseCard({
   item,
   onOpen,
-  onWordClick,
   onBookmark,
   bookmarked,
   showCategory = false,
@@ -39,50 +37,50 @@ export default function PhraseCard({
 
   return (
     <Card onClick={onOpen} style={{ cursor: 'pointer', ...style }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* 完整原句（大字） */}
         <div
           style={{
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: 700,
             fontFamily: 'var(--th-font)',
             color: 'var(--c-p800)',
-            lineHeight: 1.45,
+            lineHeight: 1.35,
           }}
         >
           {item.thai}
         </div>
 
         {/* 分词结构（小字） */}
-        <div style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 2 }}>
           <ThaiSentence
             text={item.thai}
             type="sentence"
             separator=" + "
-            onWordClick={onWordClick}
-            style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--c-p600)' }}
+            style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--c-p600)' }}
           />
         </div>
       </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <IconButton onClick={onPlay} title="朗读"><Volume2 size={18} /></IconButton>
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <IconButton onClick={onPlay} title="朗读" style={{ width: 32, height: 32 }}><Volume2 size={16} /></IconButton>
           <IconButton
             onClick={(e) => { e?.stopPropagation?.(); onBookmark?.() }}
             active={bookmarked}
             title={bookmarked ? '已收藏' : '收藏'}
+            style={{ width: 32, height: 32 }}
           >
-            <Star size={18} fill={bookmarked ? 'var(--c-amber)' : 'none'} color={bookmarked ? 'var(--c-amber)' : 'var(--c-p600)'} />
+            <Star size={16} fill={bookmarked ? 'var(--c-amber)' : 'none'} color={bookmarked ? 'var(--c-amber)' : 'var(--c-p600)'} />
           </IconButton>
         </div>
       </div>
 
-      <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 6, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12, color: 'var(--c-p600)', marginTop: 3, lineHeight: 1.45 }}>
         {item.actual || item.zh}
       </div>
 
       {showCategory && item.category && (
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 6 }}>
           <Badge color="var(--c-gold)">{item.category}</Badge>
         </div>
       )}
