@@ -227,7 +227,7 @@ function DailySentenceCard({ sentence, dictMap, onRefresh, onToken, onOpen, refr
   if (!sentence) return null
   const segs = enrichSegmented(sentence.segmented || [], dictMap)
   return (
-    <Card style={{ marginBottom: 12 }}>
+    <Card style={{ marginBottom: 12, cursor: 'pointer' }} onClick={onOpen}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <Badge color="var(--c-gold)">每日一句</Badge>
         <IconBtn onClick={onRefresh} disabled={refreshing}><RefreshCw size={16} className={refreshing ? 'spin' : ''} /></IconBtn>

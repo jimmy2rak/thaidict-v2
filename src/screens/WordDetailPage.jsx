@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { ArrowLeft, ArrowRight, Volume2, Star, FolderPlus, Layers, X, StickyNote } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import {
@@ -24,7 +24,9 @@ export default function WordDetailPage({ word }) {
 
   const row = dbWordData[word]
   const gen = generatedWords[word]
-  const data = gen || (row ? transformWordData(row) : null)
+  // 必须 memo：transformWordData(row) 每次都返回新对象，若直接放在渲染体里，
+  // 下方 meaningMap 的 useEffect 依赖 [word, data] 会因 data 引用每次都变而无限重渲染 → 主线程卡死（无报错）。
+  const data = useMemo(() => gen || (row ? transformWordData(row) : null), [gen, row])
 
   const [bookmarked, setBookmarked] = useState(false)
   const [showFolder, setShowFolder] = useState(false)
@@ -48,10 +50,7 @@ export default function WordDetailPage({ word }) {
     ;(data.synonyms || []).forEach((s) => s.word && words.add(s.word))
     ;(data.antonyms || []).forEach((s) => s.word && words.add(s.word))
     ;(data.learnerAssociations || []).forEach((la) => (la.words || []).forEach((w) => w && words.add(w)))
-    if (words.size === 0) {
-      setMeaningMap({})
-      return
-    }
+    if (words.size === 0) return
     let cancelled = false
     Promise.all([...words].map(async (w) => [w, await getWordMeanings(w)])).then((pairs) => {
       if (cancelled) return
