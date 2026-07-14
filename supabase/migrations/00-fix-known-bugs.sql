@@ -42,10 +42,14 @@ CREATE TABLE IF NOT EXISTS user_api_keys (
 CREATE INDEX IF NOT EXISTS idx_api_keys_user ON user_api_keys(user_id);
 ALTER TABLE user_api_keys ENABLE ROW LEVEL SECURITY;
 
+-- ⚠️ 安全写法：先删后建，避免「策略已存在」报错中断（你的库里 user_api_keys 已存在）
+DROP POLICY IF EXISTS "user_select_api_keys" ON user_api_keys;
 CREATE POLICY "user_select_api_keys" ON user_api_keys
   FOR SELECT TO authenticated USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "user_insert_api_keys" ON user_api_keys;
 CREATE POLICY "user_insert_api_keys" ON user_api_keys
   FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS "user_delete_api_keys" ON user_api_keys;
 CREATE POLICY "user_delete_api_keys" ON user_api_keys
   FOR DELETE TO authenticated USING (user_id = auth.uid());
 
