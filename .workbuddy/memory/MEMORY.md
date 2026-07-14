@@ -16,6 +16,7 @@ Next.js 14 App Router + React 18（JSX，非 TS）。当前本地 mock 阶段，
 4. 子页面在 `src/screens/subsections/`，引用通用组件用 `../../components/`。
 5. mock 存储：用户私有 `getUserColl/setUserColl`；全局用 `getGlobal/setGlobal`。
 6. 权限 `super_admin>admin>user`；AI 词条→`pending_approvals`→审批后入主词典。
+7. 打卡任务 `task_types` 为数组（多选：word/grammar/reading/listening/speaking/writing + 自定义字符串）；`task_type` 为兼容单值=数组首个。类型常量见 `src/lib/taskTypes.js`（`TASK_TYPES`/`typeLabel`/`typeLabels`），LearnPage 与 AdjustPlanSection 共用。
 
 ## 设计系统（2026-07-13 新中式奶油轻泰式极简 · 补强版）
 - 底色 `--c-bg #F8F5EF`（更淡）、卡面 `--c-surface #FEFDFB`、文字 `--c-p800 #433B32`。

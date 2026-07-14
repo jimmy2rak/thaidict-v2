@@ -86,7 +86,7 @@ export default function WordDetailPage({ word }) {
   }
   const onCreateFolder = async () => {
     if (!newFolder.trim() || !userId) return
-    const f = await createFolder(userId, newFolder.trim(), '#9FB08E', 'word')
+    const f = await createFolder(userId, newFolder.trim(), '#8FA98C', 'word')
     setFolders(await getFolders(userId))
     if (f) await addWordToFolder(f.id, word)
     setNewFolder('')
@@ -190,9 +190,9 @@ export default function WordDetailPage({ word }) {
 
         {/* 操作 */}
         <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-          <button onClick={openFolder} style={actionBtn('var(--c-teal)')}><FolderPlus size={16} /> 加入文件夹</button>
+          <button onClick={openFolder} style={actionBtn('var(--c-primary)')}><FolderPlus size={16} /> 加入文件夹</button>
           <button onClick={() => setShowMorph(true)} style={actionBtn('var(--c-info)')}><Layers size={16} /> 词形分析</button>
-          <button onClick={() => setShowNote(true)} style={actionBtn('var(--c-gold)')}><StickyNote size={16} /> 笔记</button>
+          <button onClick={() => setShowNote(true)} style={actionBtn('var(--c-rose)')}><StickyNote size={16} /> 笔记</button>
         </div>
       </div>
 
@@ -201,7 +201,7 @@ export default function WordDetailPage({ word }) {
         <Picker onClose={() => setShowFolder(false)} title="选择文件夹">
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <input value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="新建文件夹名称" style={pickerInput} />
-            <button onClick={onCreateFolder} style={{ ...pickerBtn, background: 'var(--c-teal)', color: '#fff' }}><FolderPlus size={14} /></button>
+            <button onClick={onCreateFolder} style={{ ...pickerBtn, background: 'var(--c-primary)', color: '#fff' }}><FolderPlus size={14} /></button>
           </div>
           {folders.filter((f) => f.folder_type === 'word').map((f) => (
             <button key={f.id} onClick={() => onAddToFolder(f.id)} style={pickerItem}>

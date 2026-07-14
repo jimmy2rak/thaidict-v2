@@ -125,7 +125,7 @@ function MainView({ userId, setView }) {
   return (
     <div className="scroll-y" style={{ flex: 1, padding: '12px 14px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <Dumbbell size={20} color="var(--c-teal)" />
+        <Dumbbell size={20} color="var(--c-primary)" />
         <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-p800)' }}>学习中心</span>
         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--c-gold)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
           <Flame size={14} /> 连续 {streak} 天
@@ -135,11 +135,11 @@ function MainView({ userId, setView }) {
       {/* 今日打卡 */}
       <Card style={{ marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-          <ProgressRing percent={percent} color="var(--c-teal)" />
+          <ProgressRing percent={percent} color="var(--c-primary)" />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-p800)' }}>今日打卡</div>
             <div style={{ fontSize: 11, color: 'var(--c-p500)', marginTop: 1 }}>{dateLabel}</div>
-            <div style={{ fontSize: 12, color: 'var(--c-teal)', fontWeight: 600, marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--c-primary)', fontWeight: 600, marginTop: 4 }}>
               {doneCount}/{totalCount} 完成 · {todayMins} 分钟
             </div>
           </div>
@@ -163,9 +163,9 @@ function MainView({ userId, setView }) {
                     background: 'var(--c-bg)', textAlign: 'left', width: '100%',
                   }}
                 >
-                  <span style={{
-                    width: 22, height: 22, borderRadius: '50%', border: '2px solid ' + (done ? 'var(--c-teal)' : 'var(--c-p300)'),
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? 'var(--c-teal)' : 'transparent', flexShrink: 0,
+                  <span                   style={{
+                    width: 22, height: 22, borderRadius: '50%', border: '2px solid ' + (done ? 'var(--c-primary)' : 'var(--c-p300)'),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? 'var(--c-primary)' : 'transparent', flexShrink: 0,
                   }}>
                     {done && <Check size={14} color="#fff" />}
                   </span>
@@ -180,7 +180,7 @@ function MainView({ userId, setView }) {
         )}
 
         {tasks !== null && totalCount > 0 && doneCount < totalCount && (
-          <button onClick={markAllDone} style={{ marginTop: 10, width: '100%', padding: '9px', borderRadius: 'var(--radius-sm)', border: '1.6px dashed var(--c-teal)', color: 'var(--c-teal)', background: 'transparent', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <button onClick={markAllDone} style={{ marginTop: 10, width: '100%', padding: '9px', borderRadius: 'var(--radius-sm)', border: '1.6px dashed var(--c-primary)', color: 'var(--c-primary)', background: 'transparent', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <Zap size={14} /> 一键完成今日打卡
           </button>
         )}
@@ -189,7 +189,7 @@ function MainView({ userId, setView }) {
       {/* 今日与本周数据 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 10 }}>
         <MiniStat icon={Clock} value={todayMins} label="今日分钟" color="var(--c-info)" />
-        <MiniStat icon={CheckCircle2} value={doneCount} label="已打卡" color="var(--c-teal)" />
+        <MiniStat icon={CheckCircle2} value={doneCount} label="已打卡" color="var(--c-primary)" />
         <MiniStat icon={Calendar} value={weeklyTotal} label="本周分钟" color="var(--c-gold)" />
       </div>
 
@@ -207,7 +207,7 @@ function MainView({ userId, setView }) {
             return (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <div style={{ height: 36, display: 'flex', alignItems: 'flex-end', width: '100%', justifyContent: 'center' }}>
-                  <div style={{ width: '80%', height: hgt, borderRadius: 4, background: (h.count || 0) ? 'var(--c-teal)' : 'var(--c-p200)', opacity: 0.6 + (h.count || 0) / max * 0.4 }} />
+                  <div style={{ width: '80%', height: hgt, borderRadius: 4, background: (h.count || 0) ? 'var(--c-primary)' : 'var(--c-p200)', opacity: 0.6 + (h.count || 0) / max * 0.4 }} />
                 </div>
                 <span style={{ fontSize: 9, color: 'var(--c-p500)' }}>{dayLabel}</span>
               </div>

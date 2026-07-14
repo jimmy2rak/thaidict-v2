@@ -28,13 +28,13 @@
   --c-s300: #D0C5B0;
   --c-s500: #A89B84;
 
-  /* 莫兰迪点缀色 */
-  --c-primary: #A68A5B;     /* 主品牌（暖褐金） */
-  --c-teal: #7FBF6E;        /* 浅豆绿（更清新） */
-  --c-gold: #D4A84A;        /* 浅金（更鲜明） */
-  --c-rose: #D36B58;        /* 珊瑚陶土 */
-  --c-info: #5FA3C2;        /* 雾蓝（更明快） */
-  --c-amber: #E0B040;       /* 亮琥珀 */
+  /* 莫兰迪点缀色（克制·低饱和·新中式奶油） */
+  --c-primary: #A68A5B;     /* 主品牌（暖褐金·主题色） */
+  --c-teal: #8FA98C;        /* 鼠尾草绿（沉静，非荧光） */
+  --c-gold: #D4A84A;        /* 浅金 */
+  --c-rose: #D36B58;        /* 珊瑚陶土（沿用，保持调整计划不变） */
+  --c-info: #6E8CA0;        /* 雾霭蓝灰（沉静，非荧光） */
+  --c-amber: #CBA14A;       /* 暗琥珀（柔和，非荧光） */
 
   /* 字体 */
   --zh-font: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -81,11 +81,11 @@
   --c-s300: #5A5044;
   --c-s500: #9A8E7C;
   --c-primary: #C4A468;
-  --c-teal: #8FD17E;
+  --c-teal: #9DBF9A;
   --c-gold: #E3BC5F;
   --c-rose: #E6836F;
-  --c-info: #6FB8E0;
-  --c-amber: #ECC558;
+  --c-info: #7FA0B5;
+  --c-amber: #D9B65A;
   --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.30);
   --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.45);

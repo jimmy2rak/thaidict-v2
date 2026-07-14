@@ -38,9 +38,9 @@ export default function WordBookPage() {
               onClick={() => { setDetail(null); setTab(t.key) }}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '7px 0',
-                borderRadius: 10, border: '1px solid ' + (active ? 'var(--c-teal)' : 'var(--c-p200)'),
-                background: active ? 'color-mix(in srgb, var(--c-teal) 12%, transparent)' : 'var(--c-surface)',
-                color: active ? 'var(--c-teal)' : 'var(--c-p500)', fontSize: 11, fontWeight: 600,
+                borderRadius: 10, border: '1px solid ' + (active ? 'var(--c-primary)' : 'var(--c-p200)'),
+                background: active ? 'color-mix(in srgb, var(--c-primary) 12%, transparent)' : 'var(--c-surface)',
+                color: active ? 'var(--c-primary)' : 'var(--c-p500)', fontSize: 11, fontWeight: 600,
               }}
             >
               <Icon size={17} />
@@ -204,7 +204,7 @@ function BookDetail({ bookId, name, userId, onBack, onTap, toast }) {
         ))}
       </div>
       {!done && (
-        <button onClick={markComplete} style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '12px', borderRadius: 12, border: '1px solid var(--c-teal)', color: 'var(--c-teal)', background: 'transparent', fontSize: 15, fontWeight: 600 }}>
+        <button onClick={markComplete} style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '12px', borderRadius: 12, border: '1px solid var(--c-primary)', color: 'var(--c-primary)', background: 'transparent', fontSize: 15, fontWeight: 600 }}>
           <Check size={16} /> 标记全书完成
         </button>
       )}
