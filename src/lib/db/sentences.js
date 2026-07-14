@@ -3,7 +3,7 @@ import { isSupabaseConfigured, supabase } from '../supabase.js'
 import { safeQuery } from '../utils.js'
 import { getGlobal, getUserColl, setUserColl } from '../mock/store.js'
 
-// 用户新增句子存于独立表 user_sentences（与 sentences 同结构 + user_id），
+// 用户新增句子存于独立表 user_sentences（与 sentences 同结构 + submitted_by 属主列），
 // 由本层在查询时 UNION 合并，前端统一读取——不改动 sentences 主表与 dictionary_full 视图。
 function getUserSentences(userId) {
   return getUserColl(userId, 'user_sentences', [])
@@ -25,7 +25,7 @@ export async function getSentencesByCategory(category, userId) {
   const [g, u] = await Promise.all([
     safeQuery(buildQ('sentences')),
     userId
-      ? safeQuery(buildQ('user_sentences').eq('user_id', userId))
+      ? safeQuery(buildQ('user_sentences').eq('submitted_by', userId))
       : Promise.resolve({ data: [] }),
   ])
   if (g.error) console.error('[getSentencesByCategory]', g.error.message)
@@ -55,7 +55,7 @@ export async function getSentenceById(id, userId) {
         .from('user_sentences')
         .select('*')
         .eq('id', id)
-        .eq('user_id', userId)
+        .eq('submitted_by', userId)
         .maybeSingle()
     )
     if (ud) return ud
@@ -68,7 +68,7 @@ export async function getUserSentencesList(userId) {
   if (!isSupabaseConfigured) return getUserSentences(userId)
   if (!supabase || !userId) return []
   const { data } = await safeQuery(
-    supabase.from('user_sentences').select('*').eq('user_id', userId)
+    supabase.from('user_sentences').select('*').eq('submitted_by', userId)
   )
   return data || []
 }
@@ -78,14 +78,14 @@ export async function addUserSentence(userId, sentence) {
   if (!sentence || !sentence.thai) return null
   if (!isSupabaseConfigured) {
     const list = getUserSentences(userId)
-    const row = { ...sentence, id: `u_${Date.now()}`, user_id: userId, origin: 'user' }
+    const row = { ...sentence, id: `u_${Date.now()}`, submitted_by: userId, origin: 'user' }
     list.push(row)
     setUserColl(userId, 'user_sentences', list)
     return row
   }
   if (!supabase || !userId) return null
   const { data, error } = await safeQuery(
-    supabase.from('user_sentences').insert({ ...sentence, user_id: userId }).select().single()
+    supabase.from('user_sentences').insert({ ...sentence, submitted_by: userId }).select().single()
   )
   if (error) {
     console.error('[addUserSentence]', error.message)

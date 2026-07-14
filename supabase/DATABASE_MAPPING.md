@@ -75,7 +75,7 @@
   - 已实现：`src/lib/db/sentences.js` 在查询层 `UNION` 合并——`getSentencesByCategory(category, userId)` / `getSentenceById(id, userId)` 同时查 `sentences`（全局）与 `user_sentences`（当前用户），前端统一渲染；并新增 `addUserSentence(userId, sentence)` / `getUserSentencesList(userId)` 写入/读取助手（`PhrasesSection` 已传入 `userId`）。
   - mock 模式：用户句子存于 `getUserColl(userId,'user_sentences')` 集合。
   - 与 `dictionary_full` 视图里已算好的 `user_sentence_count`（按 `related_words` + `status='approved'` 计）互补，不冲突。
-  - ⚠️ **待你确认**：`user_sentences` 的「属主列」具体叫什么？你刚说"id uuid"应为该表主键；我当前按 `user_id` 写（`.eq('user_id', userId)` 共 4 处）。若真实列是 `submitted_by` / `created_by` 等，告诉我，我改一行即可（4 处同步）。
+  - ✅ 已确认：`user_sentences` 属主列为 **`submitted_by`**（与 `community_words` 命名一致）。`sentences.js` 4 处已改为 `.eq('submitted_by', userId)` / `insert submitted_by: userId`。
 
 ### 3.2 软缺口（可选增强，未必要做）
 - **`user_sentence_bookmarks` 无独立列表页**：用户可"星标收藏句子"（动作已接），但页面里只有"句子夹"（folder 机制）能列出已存句子，没有专门展示"我星标的句子"的列表。
