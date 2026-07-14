@@ -142,6 +142,9 @@ let CUSTOM = new Set<string>(loadCustom())
 // 真实词典词表（由 AppContext 从 dictionary_full 注入；BUILTIN 仅作兜底）
 let REAL = new Set<string>()
 let DICT = buildDict()
+// 字典版本号：每次注入/追加词库后递增，供 ThaiSentence 等组件订阅后重跑分词
+let DICT_VERSION = 0
+const dictListeners = new Set<() => void>()
 
 function loadCustom(): string[] {
   try {
@@ -166,6 +169,24 @@ function buildDict(): Set<string> {
   for (const w of REAL) s.add(w)
   return s
 }
+function bumpDictVersion(): void {
+  DICT_VERSION++
+  // 清空旧缓存，避免「字典未加载完成时」产生的单字母/ residual 缓存继续生效
+  clearTokenCache()
+  dictListeners.forEach((cb) => {
+    try { cb() } catch { /* ignore */ }
+  })
+}
+
+/** 当前字典版本号（用于 React 依赖/比较） */
+export function getDictVersion(): number {
+  return DICT_VERSION
+}
+/** 订阅字典版本变化（setDictWords / addCustomWord 后会触发） */
+export function subscribeDictVersion(cb: () => void): () => void {
+  dictListeners.add(cb)
+  return () => { dictListeners.delete(cb) }
+}
 
 /**
  * 注入真实词典词表（dictionary_full 的 word 列）。
@@ -179,6 +200,7 @@ export function setDictWords(words: string[]): void {
     if (nw) REAL.add(nw)
   }
   DICT = buildDict()
+  bumpDictVersion()
 }
 export function getDictSize(): number {
   return DICT.size
@@ -195,6 +217,7 @@ export function addCustomWord(word: string): string | null {
   CUSTOM.add(w)
   persistCustom()
   DICT = buildDict() // 重建词典
+  bumpDictVersion()
   return w
 }
 export function addCustomWords(list: string[]): void {
@@ -210,6 +233,7 @@ export function clearCustomWords(): void {
   CUSTOM = new Set()
   persistCustom()
   DICT = buildDict()
+  bumpDictVersion()
 }
 
 // ---------- 4. 正向最长匹配分词（newmm 核心） ----------

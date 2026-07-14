@@ -9,25 +9,35 @@ export async function loadDailyPick() {
   if (!isSupabaseConfigured) {
     const pick = getGlobal('daily_picks', null)
     if (!pick) return { word: null, sentence: null }
-    const word = pick.daily_word_id ? await getWordByThai(pick.daily_word_id) : null
-    const sentence = pick.daily_sentence_id ? await getSentenceById(pick.daily_sentence_id) : null
-    return { word, sentence: sentence ? normalizeSentence(sentence) : null }
+    const [word, sentence] = await Promise.all([
+      pick.daily_word_id ? await getWordByThai(pick.daily_word_id) : null,
+      pick.daily_sentence_id ? await getSentenceById(pick.daily_sentence_id) : null,
+    ])
+    return { word, sentence }
   }
   if (!supabase) return { word: null, sentence: null }
-  const { data } = await safeQuery(supabase.from('daily_picks').select('*').maybeSingle())
-  if (!data) {
-    // daily_picks 空表：直接从词典/句子表随机取一个，避免首页无卡片
-    const [w, s] = await Promise.all([
-      safeQuery(supabase.rpc('get_random_word')),
-      getDailySentence(),
-    ])
-    return { word: w.data || null, sentence: s || null }
+
+  // 兜底：直接 RPC 随机取
+  const fetchRandomWord = async () => {
+    const { data } = await safeQuery(supabase.rpc('get_random_word'))
+    return data || null
   }
+  const fetchRandomSentence = async () => getDailySentence()
+
+  const { data: pick } = await safeQuery(supabase.from('daily_picks').select('*').maybeSingle())
+  if (!pick) {
+    const [word, sentence] = await Promise.all([fetchRandomWord(), fetchRandomSentence()])
+    return { word, sentence }
+  }
+
+  // 若 daily_picks 配置了 word/sentence 但查不到（如已被删除），则回退随机取，避免首页空白
   const [word, sentence] = await Promise.all([
-    data.daily_word_id ? getWordByThai(data.daily_word_id) : safeQuery(supabase.rpc('get_random_word')).then((r) => r.data),
-    data.daily_sentence_id
-      ? getSentenceById(data.daily_sentence_id).then((s) => s ? normalizeSentence(s) : null)
-      : getDailySentence(),
+    pick.daily_word_id
+      ? getWordByThai(pick.daily_word_id).then((w) => w || fetchRandomWord())
+      : fetchRandomWord(),
+    pick.daily_sentence_id
+      ? getSentenceById(pick.daily_sentence_id).then((s) => s || fetchRandomSentence())
+      : fetchRandomSentence(),
   ])
   return { word, sentence }
 }

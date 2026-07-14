@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { getTokens } from '../utils/thaiToken'
+import React, { useEffect, useState, useCallback, useSyncExternalStore } from 'react'
+import { getTokens, getDictVersion, subscribeDictVersion } from '../utils/thaiToken'
 import { getWordMeanings } from '../lib/db/search.js'
 import WordBubble from './WordBubble.jsx'
 
@@ -43,6 +43,12 @@ export default function ThaiSentence({
   const [tokens, setTokens] = useState([])
   const [loading, setLoading] = useState(type !== 'word')
   const [bubble, setBubble] = useState(null) // { word, x, y, status, meanings }
+  // 订阅字典版本：真实词库加载后自动重跑分词（避免缓存住「字典未加载」时的错误结果）
+  const dictVersion = useSyncExternalStore(
+    subscribeDictVersion,
+    getDictVersion,
+    () => 0
+  )
 
   // 分词：优先使用外部传入的预分词（如短语数据的 segmented 金标准）；
   // 原生词条直接下划线；其余长例句走缓存/分词客户端
@@ -73,7 +79,7 @@ export default function ThaiSentence({
     return () => {
       cancelled = true
     }
-  }, [text, type, presetTokens])
+  }, [text, type, presetTokens, dictVersion])
 
   // 点击单词 → 弹气泡 + 查词
   const handleWordClick = useCallback(

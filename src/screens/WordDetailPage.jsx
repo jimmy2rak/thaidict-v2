@@ -166,7 +166,7 @@ export default function WordDetailPage({ word }) {
               )}
               <Badge color="var(--c-p800)">{s.pos || '—'}</Badge>
               {(s.register && s.register !== '通用') && <Badge color="var(--c-info)">{s.register}</Badge>}
-              {s.source && <Badge color="var(--c-p500)">{s.source}</Badge>}
+              {s.source && s.source !== 'ai' && <Badge color="var(--c-p500)">{s.source}</Badge>}
               <span style={{ fontSize: 15, color: 'var(--c-p800)', fontWeight: 500 }}>{s.meaning}</span>
             </div>
             {s.examples?.map((ex, j) => {
@@ -213,16 +213,22 @@ export default function WordDetailPage({ word }) {
         )}
 
         {/* 学习联想 */}
-        {data.learnerAssociations?.map((la, i) => (
-          <Card key={i} style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 12, color: 'var(--c-gold)', marginBottom: 4 }}>{la.category}</div>
+        {data.learnerAssociations && data.learnerAssociations.length > 0 && (
+          <Card style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 12, color: 'var(--c-gold)', marginBottom: 4 }}>学习者联想</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {(Array.isArray(la.words) ? la.words : (la.word ? [la.word] : [])).map((w, j) => (
-                <RelWord key={j} word={w} color="var(--c-gold)" meaning={meaningMap[w]} onClick={() => handleWordTap(w)} />
+              {Array.from(
+                new Set(
+                  data.learnerAssociations.flatMap((la) =>
+                    Array.isArray(la.words) ? la.words : la.word ? [la.word] : []
+                  )
+                )
+              ).map((w, i) => (
+                <RelWord key={i} word={w} color="var(--c-gold)" meaning={meaningMap[w]} onClick={() => handleWordTap(w)} />
               ))}
             </div>
           </Card>
-        ))}
+        )}
 
         {/* 词典信息（dictionary_full 全部元数据字段） */}
         <Card style={{ marginBottom: 10 }}>
