@@ -2,9 +2,26 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
 import { getSentencesByCategory, getSentenceBookmarks, bookmarkSentence } from '../../lib/db/index.js'
-import { getGlobal } from '../../lib/mock/store.js'
 import { IconButton, Spinner, EmptyState } from '../../components/UIComponents.jsx'
 import PhraseCard from '../../components/PhraseCard.jsx'
+
+// 单行错误边界：某条句子数据异常导致渲染抛错时，只隔离这一条，其余正常显示，绝不全屏崩。
+class CardBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: false }
+  }
+  static getDerivedStateFromError() {
+    return { error: true }
+  }
+  componentDidCatch(error) {
+    console.error('[PhraseCard] render failed, skipped:', error)
+  }
+  render() {
+    if (this.state.error) return null
+    return this.props.children
+  }
+}
 
 const CATEGORIES = [
   { key: null, label: '全部' },
@@ -23,12 +40,7 @@ export default function PhrasesSection({ onClose, onOpen }) {
   const [loading, setLoading] = useState(true)
   const [bookmarks, setBookmarks] = useState(new Set())
 
-  // 分类列表（用于校验哪些分类有数据）
-  const activeCats = useMemo(() => {
-    const all = getGlobal('sentences', [])
-    return new Set(all.map((s) => s.category).filter(Boolean))
-  }, [])
-
+  // 分类列表：基于已加载的真实数据动态生成（不再读 mock localStorage）
   useEffect(() => {
     setLoading(true)
     getSentencesByCategory(category, userId).then((r) => {
@@ -44,7 +56,10 @@ export default function PhrasesSection({ onClose, onOpen }) {
     })
   }, [userId])
 
-  const visibleCats = CATEGORIES.filter((c) => c.key === null || activeCats.has(c.key))
+  const visibleCats = useMemo(() => {
+    const present = new Set(list.map((s) => s.category).filter(Boolean))
+    return CATEGORIES.filter((c) => c.key === null || present.has(c.key))
+  }, [list])
 
   const handleBookmark = async (sentenceId) => {
     if (!userId) return app.toast('请先登录')
@@ -100,14 +115,15 @@ export default function PhrasesSection({ onClose, onOpen }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {list.map((s) => (
-              <PhraseCard
-                key={s.id}
-                item={s}
-                onOpen={() => onOpen && onOpen(s)}
-                onBookmark={() => handleBookmark(s.id)}
-                bookmarked={bookmarks.has(s.id)}
-                showCategory
-              />
+              <CardBoundary key={s.id}>
+                <PhraseCard
+                  item={s}
+                  onOpen={() => onOpen && onOpen(s)}
+                  onBookmark={() => handleBookmark(s.id)}
+                  bookmarked={bookmarks.has(s.id)}
+                  showCategory
+                />
+              </CardBoundary>
             ))}
           </div>
         )}

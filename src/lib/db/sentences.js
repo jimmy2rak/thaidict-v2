@@ -5,6 +5,38 @@ import { getGlobal, getUserColl, setUserColl } from '../mock/store.js'
 
 // 用户新增句子存于独立表 user_sentences（与 sentences 同结构 + submitted_by 属主列），
 // 由本层在查询时 UNION 合并，前端统一读取——不改动 sentences 主表与 dictionary_full 视图。
+
+// 把任意来源的句子行归一化成 PhraseCard 期望的安全结构。
+// 目的：真实 sentences 表字段名可能不与代码假设一致（如 thai→content、zh→translation），
+//       这里做多候选名兜底 + 类型校正，确保既不因缺字段而崩溃，也能尽量正常显示。
+function normalizeSentence(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const thai = raw.thai ?? raw.content ?? raw.text ?? raw.word ?? ''
+  const zh = raw.zh ?? raw.translation ?? raw.meaning ?? raw.zh_hint ?? ''
+  const category = raw.category ?? raw.type ?? raw.tag ?? null
+  let segmented = raw.segmented
+  if (typeof segmented === 'string') {
+    try { segmented = JSON.parse(segmented) } catch { segmented = undefined }
+  }
+  if (!Array.isArray(segmented)) segmented = undefined
+  const id = raw.id != null ? raw.id : (raw.word || Math.random().toString(36).slice(2))
+  return {
+    id,
+    thai: String(thai || ''),
+    zh: String(zh || ''),
+    category: category != null ? String(category) : null,
+    segmented,
+    origin: raw.origin || 'global',
+    // 透传其它字段，供详情页使用
+    literal: raw.literal ?? '',
+    actual: raw.actual ?? '',
+    advice: raw.advice ?? '',
+    difficulty: raw.difficulty ?? 1,
+    tags: Array.isArray(raw.tags) ? raw.tags : [],
+    romanization: raw.romanization ?? '',
+  }
+}
+
 function getUserSentences(userId) {
   return getUserColl(userId, 'user_sentences', [])
 }
@@ -14,7 +46,8 @@ export async function getSentencesByCategory(category, userId) {
     const all = getGlobal('sentences', [])
     const userRows = userId ? getUserSentences(userId) : []
     const merged = [...all, ...userRows]
-    return category ? merged.filter((s) => s.category === category) : merged
+    const filtered = category ? merged.filter((s) => (s.category ?? s.type) === category) : merged
+    return filtered.map((s) => normalizeSentence(s)).filter(Boolean)
   }
   if (!supabase) return []
   const buildQ = (tbl) => {
@@ -29,8 +62,9 @@ export async function getSentencesByCategory(category, userId) {
       : Promise.resolve({ data: [] }),
   ])
   if (g.error) console.error('[getSentencesByCategory]', g.error.message)
-  const globalRows = (g.data || []).map((s) => ({ ...s, origin: 'global' }))
-  const userRows = (u.data || []).map((s) => ({ ...s, origin: 'user' }))
+  if (u.error) console.error('[getSentencesByCategory:user]', u.error.message)
+  const globalRows = (g.data || []).map((s) => normalizeSentence({ ...s, origin: 'global' })).filter(Boolean)
+  const userRows = (u.data || []).map((s) => normalizeSentence({ ...s, origin: 'user' })).filter(Boolean)
   return [...globalRows, ...userRows]
 }
 
