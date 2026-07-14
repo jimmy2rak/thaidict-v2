@@ -7,18 +7,46 @@ import { getGlobal, getUserColl, setUserColl } from '../mock/store.js'
 // 由本层在查询时 UNION 合并，前端统一读取——不改动 sentences 主表与 dictionary_full 视图。
 
 // 把任意来源的句子行归一化成 PhraseCard 期望的安全结构。
-// 目的：真实 sentences 表字段名可能不与代码假设一致（如 thai→content、zh→translation），
-//       这里做多候选名兜底 + 类型校正，确保既不因缺字段而崩溃，也能尽量正常显示。
+// 真实 sentences 表字段名可能不与代码假设一致（如 thai→content、zh→translation），
+// 这里做多候选名兜底 + 中文自动探测 + 类型校正，确保既不崩、也能尽量正常显示。
+function hasCJK(s) {
+  return typeof s === 'string' && /[一-鿿]/.test(s)
+}
+// 在原始行里自动找出第一个含中文的字段值（排除泰文/英文候选键），兼容任意命名。
+function pickChinese(raw, excludeKeys) {
+  for (const [k, v] of Object.entries(raw)) {
+    if (excludeKeys.includes(k)) continue
+    if (hasCJK(v)) return v
+  }
+  return ''
+}
+function asArray(v) {
+  if (Array.isArray(v)) return v
+  if (typeof v === 'string' && v) return v.split(/[,，]/).map((s) => s.trim()).filter(Boolean)
+  return []
+}
 function normalizeSentence(raw) {
   if (!raw || typeof raw !== 'object') return null
   const thai = raw.thai ?? raw.content ?? raw.text ?? raw.word ?? ''
-  const zh = raw.zh ?? raw.translation ?? raw.meaning ?? raw.zh_hint ?? ''
   const category = raw.category ?? raw.type ?? raw.tag ?? null
   let segmented = raw.segmented
   if (typeof segmented === 'string') {
     try { segmented = JSON.parse(segmented) } catch { segmented = undefined }
   }
   if (!Array.isArray(segmented)) segmented = undefined
+
+  // 中文：优先已知列名，否则自动探测含中文的字段（兼容任意命名）
+  const zh =
+    [raw.zh, raw.translation, raw.meaning, raw.zh_hint, raw.zh_cn, raw.chinese, raw.cn, raw.zh_meaning]
+      .find((v) => v != null && String(v).trim() !== '') ??
+    pickChinese(raw, ['thai', 'content', 'text', 'word', 'romanization', 'segmented'])
+  // 字面/实际意义：优先已知列名，否则用探测到的中文兜底（避免空白）
+  const literal =
+    raw.literal ?? raw.literal_meaning ?? raw.literal_zh ?? pickChinese(raw, ['thai', 'content', 'text', 'word'])
+  const actual =
+    raw.actual ?? raw.actual_meaning ?? raw.actual_zh ?? (typeof zh === 'string' ? zh : '')
+  const advice = raw.advice ?? raw.note ?? raw.tip ?? raw.suggestion ?? ''
+
   const id = raw.id != null ? raw.id : (raw.word || Math.random().toString(36).slice(2))
   return {
     id,
@@ -28,11 +56,11 @@ function normalizeSentence(raw) {
     segmented,
     origin: raw.origin || 'global',
     // 透传其它字段，供详情页使用
-    literal: raw.literal ?? '',
-    actual: raw.actual ?? '',
-    advice: raw.advice ?? '',
+    literal: String(literal || ''),
+    actual: String(actual || ''),
+    advice: String(advice || ''),
     difficulty: raw.difficulty ?? 1,
-    tags: Array.isArray(raw.tags) ? raw.tags : [],
+    tags: asArray(raw.tags ?? raw.tag),
     romanization: raw.romanization ?? '',
   }
 }
@@ -131,11 +159,11 @@ export async function addUserSentence(userId, sentence) {
 export async function getDailySentence() {
   if (!isSupabaseConfigured) {
     const all = getGlobal('sentences', [])
-    return all[Math.floor(Math.random() * all.length)] || null
+    return normalizeSentence(all[Math.floor(Math.random() * all.length)]) || null
   }
   if (!supabase) return null
   const { data } = await safeQuery(supabase.rpc('get_random_sentence'))
-  return data || null
+  return normalizeSentence(data) || null
 }
 
 function mockBookmarks(userId) {

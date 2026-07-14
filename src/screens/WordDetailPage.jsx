@@ -181,7 +181,7 @@ export default function WordDetailPage({ word }) {
           <Card key={i} style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 12, color: 'var(--c-gold)', marginBottom: 4 }}>{la.category}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {la.words.map((w, j) => (
+              {(Array.isArray(la.words) ? la.words : (la.word ? [la.word] : [])).map((w, j) => (
                 <RelWord key={j} word={w} color="var(--c-gold)" meaning={meaningMap[w]} onClick={() => handleWordTap(w)} />
               ))}
             </div>

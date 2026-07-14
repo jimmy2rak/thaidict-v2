@@ -184,7 +184,7 @@ function SearchResults({ results, onTap, searching, query, onAiSearch }) {
             {r.pos && <Badge color="var(--c-teal)">{r.pos}</Badge>}
           </div>
           <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 2 }}>
-            {(r.senses[0]?.meaning) || ''}
+            {(r.senses?.[0]?.meaning) || ''}
           </div>
         </Card>
       ))}
