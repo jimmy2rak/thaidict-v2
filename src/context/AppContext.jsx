@@ -73,18 +73,37 @@ export function AppProvider({ children }) {
   useEffect(() => {
     seedIfNeeded()
     if (isSupabaseConfigured) {
-      // OAuth PKCE / Magic Link 回调处理（修复 Bug D-1 / D-3）
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-      if (code) {
-        supabase.auth.exchangeCodeForSession(code).then(() => {
-          window.history.replaceState({}, '', window.location.pathname)
-        })
-      }
-      supabase.auth.getSession().then(({ data }) => {
+      // 显式处理 Supabase 回调（修复 magic link / OTP 登录无效）：
+      //  - 隐式流：回调 URL 形如 #access_token=...&type=magiclink / type=recovery
+      //  - PKCE 流（OAuth）：回调 URL 形如 ?code=...
+      const handleAuthCallback = async () => {
+        const hash = window.location.hash
+        const hasToken =
+          hash.includes('access_token=') ||
+          hash.includes('type=magiclink') ||
+          hash.includes('type=recovery') ||
+          hash.includes('type=signup') ||
+          hash.includes('error=')
+        const code = new URLSearchParams(window.location.search).get('code')
+
+        if (hasToken || code) {
+          const { data, error } = await supabase.auth.getSessionFromUrl()
+          if (error) console.error('[auth callback]', error)
+          if (data?.session) {
+            setSession(data.session)
+            // 清掉 URL 中的 token，避免刷新时重复处理
+            window.history.replaceState({}, '', window.location.pathname + window.location.search)
+          }
+          setLoading(false)
+          return
+        }
+
+        const { data } = await supabase.auth.getSession()
         setSession(data.session)
         setLoading(false)
-      })
+      }
+
+      handleAuthCallback()
       const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
         setSession(s)
         setLoading(false)

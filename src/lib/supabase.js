@@ -11,6 +11,13 @@ let supabase = null
 if (isSupabaseConfigured) {
   supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Prefer: 'return=representation' } },
+    auth: {
+      // 关闭易竞态的自动 URL 会话检测，改由 AppContext 显式处理回调（magic link / OTP / OAuth）
+      detectSessionInUrl: false,
+      persistSession: true,
+      autoRefreshToken: true,
+      flowType: 'pkce',
+    },
   })
 }
 

@@ -41,6 +41,12 @@ export async function signUpWithEmail(email, password, username) {
   return supabase.auth.signUp({ email, password, options: { data: { username } } })
 }
 
+// 规范回跳域名：优先用 NEXT_PUBLIC_SITE_URL（如 https://thaidict.182183.xyz），
+// 确保 magic link / OAuth 回调始终回到同一域名，避免会话落在 vercel.app 而主域名读不到。
+function redirectBase() {
+  return process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+}
+
 export async function signInWithOAuth(provider) {
   if (!isSupabaseConfigured) {
     mockSetSession(MOCK_SESSION)
@@ -48,7 +54,7 @@ export async function signInWithOAuth(provider) {
   }
   return supabase.auth.signInWithOAuth({
     provider,
-    options: { redirectTo: window.location.origin + '/auth/callback' },
+    options: { redirectTo: redirectBase() },
   })
 }
 
@@ -56,7 +62,7 @@ export async function sendMagicLink(email) {
   if (!isSupabaseConfigured) {
     return { data: {}, error: null }
   }
-  return supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } })
+  return supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectBase() } })
 }
 
 export async function signOut() {
