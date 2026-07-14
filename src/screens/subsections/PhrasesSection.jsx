@@ -31,11 +31,11 @@ export default function PhrasesSection({ onClose, onOpen }) {
 
   useEffect(() => {
     setLoading(true)
-    getSentencesByCategory(category).then((r) => {
+    getSentencesByCategory(category, userId).then((r) => {
       setList(r)
       setLoading(false)
     })
-  }, [category])
+  }, [category, userId])
 
   useEffect(() => {
     if (!userId) return

@@ -67,9 +67,10 @@
 - **用户新增【词】**：存于 `community_words`（社区共建/AI 生成词条）。
   - 现状：`search.js` 已单独查 `community_words` 并在前端与 `dictionary_full` 结果合并、按词去重 → 用户新增词**已可被搜到、进词条详情**。
   - 进阶（可选，见 `migrations/03-extend-dictionary-full.sql`）：把 `community_words` 以 `UNION ALL` 并入 `dictionary_full` 视图，使前端只查一个视图即可。该脚本为安全模板，**必须先用你真实库的视图定义（`pg_get_viewdef`）定稿**，绝不盲改既有视图。
-- **用户新增【句子】**：句子与词结构不同，不进 `dictionary_full` 词视图。
-  - 现状：`sentences` 表为句子统一来源，`db/sentences.js` 读取；用户新增句子落 `sentences`（建议带 `user_id`/`origin` 标记）或独立 `user_sentences` 表，由 `sentences.js` 在查询层 `UNION`。
-  - 需你确认：用户新增句子具体落在哪张表（现有 `sentences`？还是另有 `user_sentences`？），我据此补 `sentences.js` 的合并查询。
+- **用户新增【句子】**：句子与词结构不同，不进 `dictionary_full` 词视图；按你的选择走**独立 `user_sentences` 表**（与 `sentences` 同结构 + `user_id`）。
+  - 已实现：`src/lib/db/sentences.js` 在查询层 `UNION` 合并——`getSentencesByCategory(category, userId)` / `getSentenceById(id, userId)` 同时查 `sentences`（全局）与 `user_sentences`（当前用户），前端统一渲染；并新增 `addUserSentence(userId, sentence)` / `getUserSentencesList(userId)` 写入/读取助手（`PhrasesSection` 已传入 `userId`）。
+  - mock 模式：用户句子存于 `getUserColl(userId,'user_sentences')` 集合。
+  - ⚠️ 假设 `user_sentences` 的属主列为 `user_id`（RLS 应为 `user_id = auth.uid()`）。若你真实表用其他列（如 `created_by`），请告知，我同步修正 `sentences.js` 的 `.eq('user_id', userId)` 与读断言。
 
 ### 3.2 软缺口（可选增强，未必要做）
 - **`user_sentence_bookmarks` 无独立列表页**：用户可"星标收藏句子"（动作已接），但页面里只有"句子夹"（folder 机制）能列出已存句子，没有专门展示"我星标的句子"的列表。
