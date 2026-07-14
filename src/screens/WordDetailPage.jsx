@@ -28,6 +28,21 @@ export default function WordDetailPage({ word }) {
   // 下方 meaningMap 的 useEffect 依赖 [word, data] 会因 data 引用每次都变而无限重渲染 → 主线程卡死（无报错）。
   const data = useMemo(() => gen || (row ? transformWordData(row) : null), [gen, row])
 
+  // dictionary_full 原始行的附加元数据（transformWordData 未透传的字段），按需展示。
+  // row 即 getWordByThai 返回的 dictionary_full_ext 原行，含 senses/sources/freq_* 等全部列。
+  const raw = row || {}
+  const meta = {
+    romanizationSource: raw.romanization_source || '',
+    origin: raw.origin || '',
+    sources: Array.isArray(raw.sources) ? raw.sources : [],
+    enrichmentStatus: raw.enrichment_status || '',
+    senseCount: raw.sense_count ?? data?.senseCount ?? null,
+    userSentenceCount: raw.user_sentence_count ?? null,
+    freqTnc: raw.freq_tnc ?? null,
+    freqTtc: raw.freq_ttc ?? null,
+    freqPhupha: raw.freq_phupha ?? null,
+  }
+
   const [bookmarked, setBookmarked] = useState(false)
   const [showFolder, setShowFolder] = useState(false)
   const [folders, setFolders] = useState([])
@@ -120,6 +135,9 @@ export default function WordDetailPage({ word }) {
           <div>
             <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)' }}>{data.word}</div>
             {data.romanization && <div style={{ fontSize: 14, color: 'var(--c-p500)' }}>{data.romanization}</div>}
+            {meta.romanizationSource && (
+              <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 2 }}>罗马音来源：{meta.romanizationSource}</div>
+            )}
           </div>
           <IconButton onClick={() => speak(data.word, { rate })} title="朗读"><Volume2 size={22} /></IconButton>
         </div>
@@ -129,9 +147,11 @@ export default function WordDetailPage({ word }) {
           <Card key={i} style={{ marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               {data.senses.length > 1 && (
-                <span style={{ minWidth: 20, height: 20, borderRadius: '50%', background: 'var(--c-p800)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <span style={{ minWidth: 20, height: 20, borderRadius: '50%', background: 'var(--c-p800)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{s.senseId ?? i + 1}</span>
               )}
               <Badge color="var(--c-p800)">{s.pos || '—'}</Badge>
+              {(s.register && s.register !== '通用') && <Badge color="var(--c-info)">{s.register}</Badge>}
+              {s.source && <Badge color="var(--c-p500)">{s.source}</Badge>}
               <span style={{ fontSize: 15, color: 'var(--c-p800)', fontWeight: 500 }}>{s.meaning}</span>
             </div>
             {s.examples?.map((ex, j) => (
@@ -188,6 +208,26 @@ export default function WordDetailPage({ word }) {
           </Card>
         ))}
 
+        {/* 词典信息（dictionary_full 全部元数据字段） */}
+        <Card style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: 'var(--c-p500)', marginBottom: 8, fontWeight: 600, letterSpacing: 0.5 }}>词典信息</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {meta.senseCount != null && <MetaRow label="义项数" value={String(meta.senseCount)} />}
+            {meta.enrichmentStatus && <MetaRow label="丰富状态" value={meta.enrichmentStatus} />}
+            {meta.origin && <MetaRow label="语料来源" value={meta.origin} />}
+            {meta.sources.length > 0 && <MetaRow label="来源明细" value={meta.sources.join('、')} />}
+            {meta.userSentenceCount != null && <MetaRow label="用户句子数" value={String(meta.userSentenceCount)} />}
+            <MetaRow
+              label="词频"
+              value={[
+                meta.freqTnc != null ? `TNC ${meta.freqTnc}` : null,
+                meta.freqTtc != null ? `TTC ${meta.freqTtc}` : null,
+                meta.freqPhupha != null ? `Phupha ${meta.freqPhupha}` : null,
+              ].filter(Boolean).join('　') || '—'}
+            />
+          </div>
+        </Card>
+
         {/* 操作 */}
         <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
           <button onClick={openFolder} style={actionBtn('var(--c-primary)')}><FolderPlus size={16} /> 加入文件夹</button>
@@ -238,6 +278,15 @@ function RelWord({ word, color, meaning, onClick }) {
         <span style={{ fontFamily: 'var(--zh-font)', fontSize: 12 }}>（{meaning.join('；')}）</span>
       )}
     </button>
+  )
+}
+// 词典信息：左右两栏的 label/value 行
+function MetaRow({ label, value }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: 13 }}>
+      <span style={{ flexShrink: 0, color: 'var(--c-p500)', minWidth: 64 }}>{label}</span>
+      <span style={{ color: 'var(--c-p800)', wordBreak: 'break-word' }}>{value}</span>
+    </div>
   )
 }
 const actionBtn = (c) => ({

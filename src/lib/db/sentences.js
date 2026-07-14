@@ -25,29 +25,35 @@ function asArray(v) {
   if (typeof v === 'string' && v) return v.split(/[,，]/).map((s) => s.trim()).filter(Boolean)
   return []
 }
+// 把 sentences 真实表行归一化成 PhraseCard / SentenceDetailView 期望的结构。
+// 真实 sentences 表字段：text(泰文) / category / literal_meaning(字面) / actual_meaning(实际)
+//   / learner_tip(学习者建议) / source / difficulty / tags[] / segmented(json) / created_at
+// 这里优先用真实列名，未知 schema 时再用候选名兜底 + 中文自动探测，确保既不崩也能正常显示。
 function normalizeSentence(raw) {
   if (!raw || typeof raw !== 'object') return null
-  const thai = raw.thai ?? raw.content ?? raw.text ?? raw.word ?? ''
+  const thai = raw.text ?? raw.thai ?? raw.content ?? raw.word ?? ''
   const category = raw.category ?? raw.type ?? raw.tag ?? null
+
   let segmented = raw.segmented
   if (typeof segmented === 'string') {
     try { segmented = JSON.parse(segmented) } catch { segmented = undefined }
   }
   if (!Array.isArray(segmented)) segmented = undefined
 
-  // 中文：优先已知列名，否则自动探测含中文的字段（兼容任意命名）
-  const zh =
-    [raw.zh, raw.translation, raw.meaning, raw.zh_hint, raw.zh_cn, raw.chinese, raw.cn, raw.zh_meaning]
-      .find((v) => v != null && String(v).trim() !== '') ??
-    pickChinese(raw, ['thai', 'content', 'text', 'word', 'romanization', 'segmented'])
-  // 字面/实际意义：优先已知列名，否则用探测到的中文兜底（避免空白）
-  const literal =
-    raw.literal ?? raw.literal_meaning ?? raw.literal_zh ?? pickChinese(raw, ['thai', 'content', 'text', 'word'])
-  const actual =
-    raw.actual ?? raw.actual_meaning ?? raw.actual_zh ?? (typeof zh === 'string' ? zh : '')
-  const advice = raw.advice ?? raw.note ?? raw.tip ?? raw.suggestion ?? ''
+  // 字面 / 实际意义：优先真实列名（literal_meaning / actual_meaning）
+  const literal = raw.literal_meaning ?? raw.literal ?? raw.literal_zh ?? ''
+  const actual = raw.actual_meaning ?? raw.actual ?? raw.actual_zh ?? ''
+  // 学习者建议：真实列名为 learner_tip
+  const advice = raw.learner_tip ?? raw.advice ?? raw.note ?? raw.tip ?? raw.suggestion ?? ''
+  const source = raw.source ?? ''
+  const difficulty = raw.difficulty ?? 1
 
-  const id = raw.id != null ? raw.id : (raw.word || Math.random().toString(36).slice(2))
+  // 中文兜底：优先实际/字面意义，未知 schema 时自动探测含中文字段
+  const zh =
+    actual || literal ||
+    pickChinese(raw, ['thai', 'text', 'content', 'word', 'romanization', 'segmented']) || ''
+
+  const id = raw.id != null ? raw.id : (thai || Math.random().toString(36).slice(2))
   return {
     id,
     thai: String(thai || ''),
@@ -55,11 +61,11 @@ function normalizeSentence(raw) {
     category: category != null ? String(category) : null,
     segmented,
     origin: raw.origin || 'global',
-    // 透传其它字段，供详情页使用
     literal: String(literal || ''),
     actual: String(actual || ''),
     advice: String(advice || ''),
-    difficulty: raw.difficulty ?? 1,
+    difficulty,
+    source: String(source || ''),
     tags: asArray(raw.tags ?? raw.tag),
     romanization: raw.romanization ?? '',
   }

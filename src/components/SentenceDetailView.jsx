@@ -43,6 +43,8 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
   const actual = sentence.actual || sentence.zh || ''
   const advice = sentence.advice || sentence.note || ''
   const tags = sentence.tags || []
+  const source = sentence.source || ''
+  const difficulty = sentence.difficulty ?? null
 
   const onPlay = () => speak(sentence.thai, { rate: 1.0, lang: 'th-TH' })
 
@@ -99,6 +101,12 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
               <div style={{ fontSize: 14, color: 'var(--c-p600)', marginTop: 6, lineHeight: 1.5 }}>
                 {actual}
               </div>
+              {(source || difficulty != null) && (
+                <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {difficulty != null && <Badge color="var(--c-rose)">难度 {difficulty}</Badge>}
+                  {source && <Badge color="var(--c-p500)">来源 {source}</Badge>}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
               <IconButton onClick={onPlay} title="朗读"><Volume2 size={20} /></IconButton>
