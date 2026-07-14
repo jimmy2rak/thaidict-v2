@@ -25,22 +25,24 @@ create extension if not exists "pgcrypto";   -- 提供 gen_random_uuid()
 -- 一、词典领域表（公开数据，anon 可读）
 -- ============================================================================
 
--- 表 1：dictionary_full（词典主表，word 为主键）
+-- 表 1：dictionary（词典主表，word 为主键）
 -- 代码引用：src/lib/db/search.js（select/upsert/count）、AppContext.jsx（loadDictFromDB）
-create table if not exists dictionary_full (
+-- 注意：列形状必须与已有真实表（用户已导入 6 万+ 词条）一致：
+--   synonyms/antonyms 为 text[]（数组），senses/learner_associations 为 jsonb。
+create table if not exists dictionary (
   word                  text primary key,
   romanization          text default '',
   senses                jsonb default '[]'::jsonb,       -- [{pos, meaning, example?}]
-  synonyms              jsonb default '[]'::jsonb,
-  antonyms              jsonb default '[]'::jsonb,
+  synonyms              text[] default '{}',
+  antonyms              text[] default '{}',
   learner_associations  jsonb default '[]'::jsonb,
   sense_count           integer default 0,
   enrichment_status     text default 'pending',          -- pending | enriched
   freq_ttc               integer default 0,
-  source                text default 'dictionary_full',
+  source                text default 'dictionary',
   created_at            timestamptz default now()
 );
-create index if not exists idx_dict_full_senses on dictionary_full using gin (senses jsonb_path_ops);
+create index if not exists idx_dictionary_senses on dictionary using gin (senses jsonb_path_ops);
 
 -- 表 3：sentences（句子/短语库 idioms|buddhist|daily）
 -- 代码引用：src/lib/db/sentences.js（select / get_random_sentence RPC）
@@ -79,7 +81,7 @@ create index if not exists idx_community_senses on community_words using gin (se
 -- 代码引用：src/lib/db/daily-picks.js（select daily_word_id / daily_sentence_id）
 create table if not exists daily_picks (
   id                 bigserial primary key,
-  daily_word_id      text references dictionary_full(word) on delete set null,
+  daily_word_id      text references dictionary(word) on delete set null,
   daily_sentence_id  bigint references sentences(id) on delete set null,
   pick_date          date default current_date,
   created_at         timestamptz default now()
@@ -95,8 +97,19 @@ create table if not exists system_config (
   updated_at  timestamptz default now()
 );
 
--- 注：文档 §1.6 表 2 `dictionary`（旧版词典表）在本新架构中已由 dictionary_full 取代，
---     real 模式代码（getDictionaryCount）直接查 dictionary_full，故不再单独建 `dictionary` 表。
+-- 注：用户真实库里 `dictionary_full` 是一个**已存在的视图（Supabase 表编辑器里显示"小眼睛"图标）**，
+--     它本身不存数据，而是把 `dictionary` 主表 + `word_freqs` 词频表 + `word_sources` 来源表
+--     综合映射成每词一行（含词频/来源等字段要点）。
+--     - 代码（search.js / AppContext.jsx）统一**读取** `dictionary_full`（查词、词条详情、分词词典加载）。
+--     - **写入**（审批入库 addDictionaryWord）仍落基表 `dictionary`，视图会自动反映。
+--     - 严禁 DROP / 重建该视图，否则会丢失用户已有的 freq/source 映射逻辑。
+--     下面仅在「全新空库」时建一个最小透传视图（已存在则跳过，绝不覆盖）；真实库沿用既有视图。
+do $$
+begin
+  if not exists (select 1 from pg_views where viewname = 'dictionary_full') then
+    create view dictionary_full as select * from dictionary;
+  end if;
+end $$;
 
 -- ============================================================================
 -- 二、用户数据表（JWT-based RLS：user_id = auth.uid()）
@@ -477,15 +490,21 @@ $$;
 -- ============================================================================
 
 -- 5.1 公开表：anon + authenticated 可读
-alter table dictionary_full     enable row level security;
+alter table dictionary          enable row level security;
 alter table sentences           enable row level security;
 alter table daily_picks         enable row level security;
 alter table word_books          enable row level security;
 
-create policy "public_read_dictionary"  on dictionary_full  for select to anon, authenticated using (true);
+create policy "public_read_dictionary"  on dictionary  for select to anon, authenticated using (true);
 create policy "public_read_sentences"   on sentences        for select to anon, authenticated using (true);
 create policy "public_read_daily_picks" on daily_picks      for select to anon, authenticated using (true);
 create policy "public_read_word_books"  on word_books       for select to anon, authenticated using (true);
+
+-- dictionary_full 视图：前端查词/词条详情的唯一读取入口，必须 anon/authenticated 可读。
+-- 仅补 RLS + 公开读策略；绝不改动视图定义本身（保留用户已有的 freq/source 映射）。
+alter table dictionary_full enable row level security;
+create policy if not exists "public_read_dictionary_full"
+  on dictionary_full for select to anon, authenticated using (true);
 
 -- community_words：可读 + 登录用户可写
 alter table community_words enable row level security;

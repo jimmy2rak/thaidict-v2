@@ -17,6 +17,7 @@ Next.js 14 App Router + React 18（JSX，非 TS）。当前本地 mock 阶段，
 5. mock 存储：用户私有 `getUserColl/setUserColl`；全局用 `getGlobal/setGlobal`。
 6. 权限 `super_admin>admin>user`；AI 词条→`pending_approvals`→审批后入主词典。
 7. 打卡任务 `task_types` 为数组（多选：word/grammar/reading/listening/speaking/writing + 自定义字符串）；`task_type` 为兼容单值=数组首个。类型常量见 `src/lib/taskTypes.js`（`TASK_TYPES`/`typeLabel`/`typeLabels`），LearnPage 与 AdjustPlanSection 共用。
+8. **【关键·词典读取】`dictionary_full` 是用户真实库里已存在的【视图】（Supabase 表编辑器"小眼睛"图标），本身不存数据，综合映射 `dictionary` 基表 + `word_freqs` 词频表 + `word_sources` 来源表成每词一行。代码【只读】`dictionary_full`（查词/词条详情/分词词典加载）；【写入】审批入库落基表 `dictionary`（视图自动反映）。⚠️ 绝不 DROP/重建/覆盖该视图——要扩展用户新增词进映射，用 `supabase/migrations/03-extend-dictionary-full.sql` 的 `UNION ALL` 方案（须先用 `pg_get_viewdef` 定稿）。
 
 ## 设计系统（2026-07-14 新中式奶油·克制版 · 全局低饱和）
 - 底色 `--c-bg #F8F5EF`、卡面 `--c-surface #FEFDFB`、文字 `--c-p800 #433B32`。
@@ -49,3 +50,17 @@ Next.js 14 App Router + React 18（JSX，非 TS）。当前本地 mock 阶段，
 - 环境变量用 Next.js 的 `NEXT_PUBLIC_SUPABASE_URL/ANON_KEY`（非文档写的 Vite `VITE_*`，已在 `src/lib/supabase.js` 实现）。
 - 上线顺序：跑 01-create-schema.sql → 00-fix-known-bugs.sql（幂等）→ 配 Vercel 环境变量 → `isSupabaseConfigured` 自动切换真实后端。
 - 软缺口（未做）：`user_sentence_bookmarks` 无独立"我的收藏句子"列表页（句子夹 folder 已覆盖），待用户确认是否加。
+
+## 部署 / 环境变量（2026-07-14 落地）
+- **GitHub 仓库**：`https://github.com/jimmy2rak/thaidict-v2`（已 push，main 跟踪 origin/main）。`gh` 已登录 jimmy2rak。
+- **Supabase 项目 ref**：`zvemahqskgluhirzbcqu`（URL 仅到根域名，勿带 `/rest/v1/`）。站点域名 `thaidict.182183.xyz`。
+- **`.env.local` 已落地**（gitignored，密钥未进 GitHub）：7 个变量全部填好，URL 已自动清理后缀。沙箱禁外网出网，无法 live 校验，待 Vercel 构建后由真实环境验证。
+- **Vercel**：Next.js 自动识别，无需 vercel.json。环境变量经 `.env.local`（gitignored）导入：Dashboard → Settings → Environment Variables → Import from .env，或 `scripts/import-env.sh`（`vercel env import`）。
+- **Brevo 邮件架构决策**：原 `auth.js` 真实模式调不存在的 Supabase Edge Function（`/functions/v1/send-otp`）。改为 **Next.js Route Handler**（`app/api/send-otp`、`app/api/verify-otp`），Brevo 密钥作为 **Vercel 环境变量**，故 `.env.local` 必须含 Brevo 三项。
+- **必需环境变量清单**：
+  `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`（前端，切换真实后端）/
+  `SUPABASE_SERVICE_ROLE_KEY`（仅服务端写 `otp_codes`）/
+  `NEXT_PUBLIC_SITE_URL`（OAuth/Magic Link 回调）/
+  `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_SENDER_NAME`。
+- 服务端 supabase 客户端：`src/lib/supabaseServer.js`（`getServerSupabase`，service_role，无 session）；Brevo 发送：`src/lib/brevo.js`（`sendBrevoEmail`）。
+- 注意：`vercel` CLI 未安装；Vercel 部署建议用户在 Dashboard 导入 GitHub 仓库 + 上传 `.env.local`，比 CLI 省事。

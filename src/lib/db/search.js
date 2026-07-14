@@ -99,7 +99,7 @@ export async function getWordByText(text) {
   return getWordByThai(text)
 }
 
-// 词典总数（修复 Bug B-3：查 dictionary_full）
+// 词典总数（查 dictionary_full 视图，已综合映射词频/来源；写入仍落基表 dictionary）
 export async function getDictionaryCount() {
   if (!isSupabaseConfigured) return mockGetDictionaryCount()
   if (!supabase) return 0
@@ -161,7 +161,7 @@ export async function getWordMeanings(word) {
 }
 
 // 将标准格式词条写入「主词典」（需求 #3：管理员审批通过后自动入库）。
-// mock 写入 dictionary 全局集合；real 写入 dictionary_full 表。
+// mock 写入 dictionary 全局集合；real 写入 dictionary 表。
 export async function addDictionaryWord(entry) {
   if (!entry || !entry.word) return null
   const row = normalizeDictionaryRow(entry)
@@ -175,7 +175,7 @@ export async function addDictionaryWord(entry) {
   }
   if (!supabase) return null
   const { data, error } = await safeQuery(
-    supabase.from('dictionary_full').upsert(row).select().single()
+    supabase.from('dictionary').upsert(row).select().single()
   )
   if (error) {
     console.error('[addDictionaryWord]', error.message)
