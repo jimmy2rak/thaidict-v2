@@ -49,14 +49,23 @@ export async function getCheckinTasks(userId) {
   return data || []
 }
 
+function normalizeTypes(task) {
+  const arr = Array.isArray(task.task_types) && task.task_types.length
+    ? task.task_types
+    : [task.task_type || 'word']
+  return { task_types: arr, task_type: arr[0] }
+}
+
 export async function createCheckinTask(userId, task) {
+  const { task_types, task_type } = normalizeTypes(task)
   if (!isSupabaseConfigured) {
     const list = getUserColl(userId, 'checkin_tasks', [])
     const t = {
       id: uid(),
       name: task.name,
       duration_minutes: task.duration_minutes || 10,
-      task_type: task.task_type || 'word',
+      task_types,
+      task_type,
       plan_days: task.plan_days || [1, 2, 3, 4, 5, 6, 7],
       sort_order: task.sort_order ?? list.length,
       is_active: true,
@@ -73,7 +82,8 @@ export async function createCheckinTask(userId, task) {
         user_id: userId,
         name: task.name,
         duration_minutes: task.duration_minutes || 10,
-        task_type: task.task_type || 'word',
+        task_types,
+        task_type,
         plan_days: task.plan_days || [1, 2, 3, 4, 5, 6, 7],
         sort_order: task.sort_order ?? 0,
         is_active: true,
@@ -89,16 +99,17 @@ export async function createCheckinTask(userId, task) {
 }
 
 export async function updateCheckinTask(userId, taskId, updates) {
+  const merged = updates.task_types || updates.task_type ? normalizeTypes(updates) : updates
   if (!isSupabaseConfigured) {
     const list = getUserColl(userId || '__', 'checkin_tasks', [])
     const t = list.find((x) => x.id === taskId)
-    if (t) Object.assign(t, updates)
+    if (t) Object.assign(t, merged)
     setUserColl(userId || '__', 'checkin_tasks', list)
     return t
   }
   if (!supabase) return null
   const { data } = await safeQuery(
-    supabase.from('user_checkin_tasks').update(updates).eq('id', taskId).select().single()
+    supabase.from('user_checkin_tasks').update(merged).eq('id', taskId).select().single()
   )
   return data
 }

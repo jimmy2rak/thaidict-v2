@@ -9,6 +9,7 @@ import {
   getStreak, getCheckinHeatmapData, getWeeklyStudyMinutes, getLearningPlan,
 } from '../lib/db/index.js'
 import { getCSTWeekday, getTodayCST } from '../lib/utils.js'
+import { typeLabels } from '../lib/taskTypes.js'
 import { Card, Spinner, EmptyState, Btn } from '../components/UIComponents.jsx'
 
 import StatsSection from './subsections/StatsSection.jsx'
@@ -170,7 +171,7 @@ function MainView({ userId, setView }) {
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-p800)' }}>{t.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--c-p500)' }}>{t.duration_minutes} 分钟 · {t.task_type === 'word' ? '单词' : '听力'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--c-p500)' }}>{t.duration_minutes} 分钟 · {typeLabels(t.task_types || [t.task_type])}</div>
                   </div>
                 </button>
               )

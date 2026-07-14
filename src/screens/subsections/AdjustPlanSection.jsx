@@ -1,98 +1,116 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Save, Clock, Target, Plus, Trash2, X, Check, Pencil } from 'lucide-react'
+import { ArrowLeft, Trash2, X, Sparkles, Flame, Plus, Check } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
 import {
-  getLearningPlan, saveLearningPlan,
-  getCheckinTasks, createCheckinTask, updateCheckinTask, deleteCheckinTask,
+  getCheckinTasks, getCheckinCompletions, createCheckinTask, updateCheckinTask, deleteCheckinTask,
+  getStreak,
 } from '../../lib/db/index.js'
-import { IconButton, Card, Spinner, Btn } from '../../components/UIComponents.jsx'
+import { getTodayCST, getCSTWeekday } from '../../lib/utils.js'
+import { TASK_TYPES, typeLabels } from '../../lib/taskTypes.js'
+import { IconButton, Card, Spinner, Badge } from '../../components/UIComponents.jsx'
 
 const WEEK = [
-  { v: 1, l: '一' },
-  { v: 2, l: '二' },
-  { v: 3, l: '三' },
-  { v: 4, l: '四' },
-  { v: 5, l: '五' },
-  { v: 6, l: '六' },
-  { v: 7, l: '日' },
+  { v: 1, l: '一' }, { v: 2, l: '二' }, { v: 3, l: '三' }, { v: 4, l: '四' },
+  { v: 5, l: '五' }, { v: 6, l: '六' }, { v: 7, l: '日' },
 ]
+const WEEKDAY_LABEL = { 1: '星期一', 2: '星期二', 3: '星期三', 4: '星期四', 5: '星期五', 6: '星期六', 7: '星期日' }
+const DURATIONS = [5, 10, 15, 20, 30, 45, 60]
 
 export default function AdjustPlanSection({ onClose }) {
   const app = useApp()
   const { userId, toast } = app
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [tasks, setTasks] = useState([])
-  const [plan, setPlan] = useState(null)
 
-  // 计划表单
-  const [dailyWords, setDailyWords] = useState(10)
-  const [dailyMinutes, setDailyMinutes] = useState(15)
-  const [days, setDays] = useState([1, 2, 3, 4, 5, 6, 7])
-  const [reminderTime, setReminderTime] = useState('20:00')
+  // 今日数据卡片
+  const [dateLabel, setDateLabel] = useState('')
+  const [doneCount, setDoneCount] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [streak, setStreak] = useState(0)
 
-  // 任务编辑
-  const [editing, setEditing] = useState(null) // null | 'new' | taskId
-  const [draft, setDraft] = useState({ name: '', duration_minutes: 15, task_type: 'word', plan_days: [1, 2, 3, 4, 5, 6, 7] })
+  // 任务表单（新增 / 编辑共用）
+  const [editingId, setEditingId] = useState(null)
+  const [selectedTypes, setSelectedTypes] = useState(['word'])
+  const [customOpen, setCustomOpen] = useState(false)
+  const [customName, setCustomName] = useState('')
+  const [name, setName] = useState('')
+  const [days, setDays] = useState([1, 2, 3, 4, 5])
+  const [duration, setDuration] = useState(15)
+
+  // AI 推荐
+  const [aiPreview, setAiPreview] = useState(null)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importText, setImportText] = useState('')
 
   const load = async () => {
     if (!userId) return setLoading(false)
-    const [p, t] = await Promise.all([getLearningPlan(userId), getCheckinTasks(userId)])
-    setPlan(p)
-    if (p) {
-      setDailyWords(p.daily_words ?? 10)
-      setDailyMinutes(p.daily_minutes ?? 15)
-      setDays(p.plan_days?.length ? p.plan_days : [1, 2, 3, 4, 5, 6, 7])
-      setReminderTime(p.reminder_time || '20:00')
-    }
-    setTasks(t)
+    const today = getTodayCST()
+    const weekday = getCSTWeekday()
+    const all = await getCheckinTasks(userId)
+    const completed = await getCheckinCompletions(userId, today)
+    const todayTasks = all.filter((t) => (t.plan_days || []).includes(weekday))
+    const [y, m, d] = today.split('-')
+    setDateLabel(`${y}年${Number(m)}月${Number(d)}日 ${WEEKDAY_LABEL[weekday]}`)
+    setDoneCount(todayTasks.filter((t) => completed.includes(t.id)).length)
+    setTotalCount(todayTasks.length)
+    setStreak(await getStreak(userId))
+    setTasks(all)
     setLoading(false)
   }
   useEffect(() => { load() }, [userId]) // eslint-disable-line
 
+  const resetForm = () => {
+    setEditingId(null)
+    setSelectedTypes(['word'])
+    setCustomOpen(false)
+    setCustomName('')
+    setName('')
+    setDays([1, 2, 3, 4, 5])
+    setDuration(15)
+  }
+
+  const startEdit = (t) => {
+    setEditingId(t.id)
+    setSelectedTypes(t.task_types && t.task_types.length ? [...t.task_types] : [t.task_type || 'word'])
+    setName(t.name)
+    setDays(t.plan_days && t.plan_days.length ? [...t.plan_days] : [1, 2, 3, 4, 5])
+    setDuration(t.duration_minutes || 15)
+    window.scrollTo({ top: 9999, behavior: 'smooth' })
+  }
+
+  const toggleType = (v) => {
+    setSelectedTypes((s) => (s.includes(v) ? s.filter((x) => x !== v) : [...s, v]))
+  }
+  const confirmCustom = () => {
+    const c = customName.trim()
+    if (!c) return
+    setSelectedTypes((s) => (s.includes(c) ? s : [...s, c]))
+    setCustomName('')
+    setCustomOpen(false)
+  }
   const toggleDay = (v) => {
     setDays((d) => (d.includes(v) ? d.filter((x) => x !== v) : [...d, v].sort((a, b) => a - b)))
   }
 
-  const onSavePlan = async () => {
+  const submitForm = async () => {
     if (!userId) return
-    setSaving(true)
-    await saveLearningPlan(userId, {
-      daily_words: Number(dailyWords) || 0,
-      daily_minutes: Number(dailyMinutes) || 0,
-      plan_days: days,
-      reminder_time: reminderTime,
-    })
-    setSaving(false)
-    toast('学习计划已保存')
-  }
-
-  const startNew = () => {
-    setEditing('new')
-    setDraft({ name: '', duration_minutes: 15, task_type: 'word', plan_days: [...days] })
-  }
-
-  const startEdit = (t) => {
-    setEditing(t.id)
-    setDraft({ name: t.name, duration_minutes: t.duration_minutes, task_type: t.task_type, plan_days: [...(t.plan_days || [])] })
-  }
-
-  const saveTask = async () => {
-    if (!userId || !draft.name.trim()) return toast('请填写任务名称')
+    if (!name.trim()) return toast('请填写任务名称')
+    let types = selectedTypes.filter(Boolean)
+    if (types.length === 0) types = ['word']
     const payload = {
-      name: draft.name.trim(),
-      duration_minutes: Number(draft.duration_minutes) || 10,
-      task_type: draft.task_type || 'word',
-      plan_days: draft.plan_days?.length ? draft.plan_days : [...days],
+      name: name.trim(),
+      task_types: types,
+      duration_minutes: Number(duration) || 15,
+      plan_days: days.length ? days : [1, 2, 3, 4, 5],
     }
-    if (editing === 'new') {
+    if (editingId) {
+      await updateCheckinTask(userId, editingId, payload)
+      toast('已更新打卡任务')
+    } else {
       await createCheckinTask(userId, payload)
       toast('已添加打卡任务')
-    } else {
-      await updateCheckinTask(userId, editing, payload)
-      toast('已更新打卡任务')
     }
-    setEditing(null)
+    resetForm()
     setTasks(await getCheckinTasks(userId))
   }
 
@@ -100,14 +118,55 @@ export default function AdjustPlanSection({ onClose }) {
     if (!userId) return
     await deleteCheckinTask(userId, id)
     toast('已删除打卡任务')
+    if (editingId === id) resetForm()
     setTasks(await getCheckinTasks(userId))
   }
 
-  const toggleTaskDay = (v) => {
-    setDraft((d) => ({
-      ...d,
-      plan_days: d.plan_days.includes(v) ? d.plan_days.filter((x) => x !== v).sort((a, b) => a - b) : [...d.plan_days, v].sort((a, b) => a - b),
-    }))
+  // ---------- AI 推荐 ----------
+  const generateAI = () => {
+    setAiPreview(recommendedPlan())
+  }
+  const applyAI = async () => {
+    if (!userId || !aiPreview) return
+    for (const r of aiPreview) {
+      await createCheckinTask(userId, {
+        name: r.name, task_types: r.task_types,
+        duration_minutes: r.duration_minutes, plan_days: r.plan_days,
+      })
+    }
+    toast('已应用 AI 推荐计划')
+    setAiPreview(null)
+    setTasks(await getCheckinTasks(userId))
+  }
+  const copyPrompt = async () => {
+    const prompt = '你是一位泰语学习规划师。请根据初学者水平，为我制定一份每日打卡计划，包含：单词背诵、语法练习、阅读、听力、口语、写作，并给出各项的学习类型（task_types，可多选：word/grammar/reading/listening/speaking/writing）与预计时长（duration_minutes，分钟）以及每周重复日（plan_days，1=周一…7=周日）。请以 JSON 数组返回，格式：[{"name":"复习泰语基础词汇","task_types":["word"],"duration_minutes":15,"plan_days":[1,2,3,4,5,6,7]}]。'
+    try {
+      await navigator.clipboard.writeText(prompt)
+      toast('Prompt 已复制到剪贴板')
+    } catch {
+      toast('复制失败，请手动复制')
+    }
+  }
+  const applyImport = async () => {
+    if (!userId) return
+    let arr
+    try { arr = JSON.parse(importText) } catch { return toast('JSON 解析失败') }
+    if (!Array.isArray(arr)) return toast('请粘贴数组格式')
+    let n = 0
+    for (const r of arr) {
+      if (!r || !r.name) continue
+      const types = Array.isArray(r.task_types) && r.task_types.length ? r.task_types : [r.task_type || 'word']
+      await createCheckinTask(userId, {
+        name: r.name, task_types: types,
+        duration_minutes: Number(r.duration_minutes) || 15,
+        plan_days: Array.isArray(r.plan_days) && r.plan_days.length ? r.plan_days : [1, 2, 3, 4, 5],
+      })
+      n++
+    }
+    toast(`已导入 ${n} 个任务`)
+    setImportOpen(false)
+    setImportText('')
+    setTasks(await getCheckinTasks(userId))
   }
 
   if (loading) {
@@ -120,6 +179,7 @@ export default function AdjustPlanSection({ onClose }) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* 顶部导航区 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
         <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>调整学习计划</div>
@@ -127,155 +187,253 @@ export default function AdjustPlanSection({ onClose }) {
       </div>
 
       <div className="scroll-y" style={{ flex: 1, padding: 14 }}>
-        <Card style={{ marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <Target size={16} color="var(--c-teal)" />
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-p800)' }}>每日目标</span>
+        {/* 今日数据卡片 */}
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'var(--c-p600)', marginBottom: 6 }}>{dateLabel}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>{doneCount}/{totalCount} 项已完成</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 700, color: 'var(--c-gold)' }}>
+              <Flame size={16} /> {streak}天
+            </span>
           </div>
-          <Field label="每日新词数">
-            <input type="number" min="0" value={dailyWords} onChange={(e) => setDailyWords(e.target.value)} style={numInput} />
-          </Field>
-          <Field label="每日学习分钟">
-            <input type="number" min="0" value={dailyMinutes} onChange={(e) => setDailyMinutes(e.target.value)} style={numInput} />
-          </Field>
         </Card>
 
-        <Card style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-p800)', marginBottom: 10 }}>每周学习日</div>
-          <DayPicker days={days} onToggle={toggleDay} />
-        </Card>
-
-        <Card style={{ marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <Clock size={16} color="var(--c-gold)" />
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-p800)' }}>提醒时间</span>
-          </div>
-          <input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} style={numInput} />
-        </Card>
-
-        <Btn onClick={onSavePlan} disabled={saving} style={{ width: '100%', marginBottom: 14 }}>
-          <Save size={16} /> {saving ? '保存中…' : '保存计划'}
-        </Btn>
-
-        {/* 打卡任务管理 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-p800)' }}>打卡任务</span>
-          <button onClick={startNew} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--c-teal)', fontWeight: 600 }}>
-            <Plus size={14} /> 新建任务
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-          {tasks.map((t) =>
-            editing === t.id ? (
-              <TaskEditor key={t.id} draft={draft} setDraft={setDraft} onSave={saveTask} onCancel={() => setEditing(null)} toggleDay={toggleTaskDay} />
-            ) : (
-              <Card key={t.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-p800)' }}>{t.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--c-p500)', marginTop: 2 }}>
-                      {t.duration_minutes} 分钟 · {t.task_type === 'word' ? '单词' : '听力'} · {formatDays(t.plan_days)}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <IconButton onClick={() => startEdit(t)} title="编辑" style={{ width: 30, height: 30 }}><Pencil size={15} /></IconButton>
-                    <IconButton onClick={() => removeTask(t.id)} title="删除" style={{ width: 30, height: 30 }}><Trash2 size={16} color="var(--c-rose)" /></IconButton>
+        {/* 已有任务条目 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 4 }}>
+          {tasks.map((t) => (
+            <Card key={t.id} onClick={() => startEdit(t)} style={{ cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid var(--c-p300)', flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-p800)' }}>{t.name}</div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 3 }}>
+                    <Badge color="var(--c-primary)">{typeLabels(t.task_types || [t.task_type])}</Badge>
+                    <span style={{ fontSize: 11, color: 'var(--c-p500)' }}>{t.duration_minutes}分钟</span>
+                    <span style={{ fontSize: 11, color: 'var(--c-p500)' }}>{formatDays(t.plan_days)}</span>
                   </div>
                 </div>
-              </Card>
-            )
-          )}
-          {editing === 'new' && <TaskEditor draft={draft} setDraft={setDraft} onSave={saveTask} onCancel={() => setEditing(null)} toggleDay={toggleTaskDay} />}
-          {tasks.length === 0 && editing !== 'new' && (
-            <div style={{ textAlign: 'center', color: 'var(--c-p500)', fontSize: 13, padding: '16px 0' }}>还没有打卡任务，点右上角新建一个</div>
+                <IconButton onClick={(e) => { e.stopPropagation(); removeTask(t.id) }} title="删除" style={{ width: 30, height: 30 }}>
+                  <Trash2 size={16} color="var(--c-rose)" />
+                </IconButton>
+              </div>
+            </Card>
+          ))}
+          {tasks.length === 0 && (
+            <div style={{ textAlign: 'center', color: 'var(--c-p500)', fontSize: 13, padding: '16px 0' }}>还没有打卡任务，在下方添加一个吧</div>
           )}
         </div>
-      </div>
-    </div>
-  )
-}
 
-function TaskEditor({ draft, setDraft, onSave, onCancel, toggleDay }) {
-  return (
-    <Card style={{ background: 'var(--c-bg)' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <input
-          value={draft.name}
-          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-          placeholder="任务名称，如：背诵 20 个单词"
-          style={{ ...inp, fontSize: 14 }}
-        />
-        <div style={{ display: 'flex', gap: 8 }}>
+        {/* 分割线 · 添加新任务 */}
+        <Divider text="添加新任务" />
+
+        {/* 新增任务表单卡片 */}
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-p800)', marginBottom: 10 }}>
+            {editingId ? '编辑任务' : '添加新任务'}
+          </div>
+
+          <Label>学习类型</Label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {TASK_TYPES.map((t) => {
+              const active = selectedTypes.includes(t.v)
+              return (
+                <button key={t.v} onClick={() => toggleType(t.v)} style={chipStyle(active)}>
+                  {active ? '●' : '○'} {t.l}
+                </button>
+              )
+            })}
+            <button
+              onClick={() => setCustomOpen((o) => !o)}
+              style={chipStyle(selectedTypes.some((x) => !TASK_TYPES.find((tt) => tt.v === x)))}
+            >
+              ⊕ 自定义
+            </button>
+          </div>
+          {customOpen && (
+            <input
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && confirmCustom()}
+              onBlur={confirmCustom}
+              placeholder="输入自定义类型，如：配音"
+              style={{ ...inp, marginTop: 6, fontSize: 13 }}
+              autoFocus
+            />
+          )}
+
+          <Label>任务名称</Label>
           <input
-            type="number"
-            min="1"
-            value={draft.duration_minutes}
-            onChange={(e) => setDraft((d) => ({ ...d, duration_minutes: e.target.value }))}
-            placeholder="分钟"
-            style={{ ...inp, flex: 1, fontSize: 14 }}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="例如: 复习泰语基础词汇"
+            style={inp}
           />
-          <select
-            value={draft.task_type}
-            onChange={(e) => setDraft((d) => ({ ...d, task_type: e.target.value }))}
-            style={{ ...inp, flex: 1, fontSize: 14 }}
-          >
-            <option value="word">单词</option>
-            <option value="listening">听力</option>
-            <option value="review">复习</option>
-          </select>
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: 'var(--c-p500)', marginBottom: 6 }}>安排在周几</div>
-          <DayPicker days={draft.plan_days} onToggle={toggleDay} size="small" />
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <Btn onClick={onSave} style={{ flex: 1 }}><Save size={14} /> 保存</Btn>
-          <button onClick={onCancel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 14px', borderRadius: 12, border: '1px solid var(--c-p200)', color: 'var(--c-p600)', background: 'var(--c-surface)', fontSize: 14, fontWeight: 600 }}>
-            <X size={14} /> 取消
+
+          <Label>重复日</Label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {WEEK.map((d) => {
+              const active = days.includes(d.v)
+              return (
+                <button
+                  key={d.v}
+                  onClick={() => toggleDay(d.v)}
+                  style={{
+                    flex: 1, aspectRatio: '1 / 1', borderRadius: '50%', border: '2px solid ' + (active ? 'var(--c-primary)' : 'var(--c-p200)'),
+                    background: active ? 'var(--c-primary)' : 'var(--c-surface)',
+                    color: active ? '#fff' : 'var(--c-p500)', fontSize: 12, fontWeight: 700,
+                  }}
+                >
+                  {d.l}
+                </button>
+              )
+            })}
+          </div>
+
+          <Label>预计时长</Label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {DURATIONS.map((m) => {
+              const active = duration === m
+              return (
+                <button
+                  key={m}
+                  onClick={() => setDuration(m)}
+                  style={{
+                    padding: '7px 12px', borderRadius: 'var(--radius-sm)',
+                    border: '1px solid ' + (active ? 'var(--c-primary)' : 'var(--c-p200)'),
+                    background: active ? 'color-mix(in srgb, var(--c-primary) 14%, transparent)' : 'var(--c-surface)',
+                    color: active ? 'var(--c-primary)' : 'var(--c-p600)', fontSize: 12, fontWeight: 600,
+                  }}
+                >
+                  {m}分钟
+                </button>
+              )
+            })}
+          </div>
+
+          <button onClick={submitForm} style={{
+            width: '100%', marginTop: 14, padding: '11px', borderRadius: 'var(--radius-sm)',
+            border: 'none', background: 'var(--c-p200)', color: 'var(--c-p700)', fontSize: 14, fontWeight: 700,
+          }}>
+            {editingId ? '保存修改' : '添加任务'}
           </button>
-        </div>
+          {editingId && (
+            <button onClick={resetForm} style={{
+              width: '100%', marginTop: 8, padding: '9px', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--c-p200)', background: 'transparent', color: 'var(--c-p600)', fontSize: 13, fontWeight: 600,
+            }}>
+              取消编辑
+            </button>
+          )}
+        </Card>
+
+        {/* 分割线 · AI推荐 */}
+        <Divider text="AI推荐" />
+
+        {/* AI智能推荐卡片 */}
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Sparkles size={16} color="var(--c-primary)" />
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-p800)' }}>AI智能推荐</span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--c-p500)', marginBottom: 10, lineHeight: 1.5 }}>
+            根据你的水平和时间，AI为你定制最优打卡计划
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <button onClick={generateAI} style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '10px', borderRadius: 'var(--radius-sm)', border: 'none',
+              background: 'var(--c-primary)', color: '#fff', fontSize: 13, fontWeight: 700,
+            }}>
+              <Sparkles size={14} /> AI生成计划
+            </button>
+            <button onClick={() => setImportOpen((o) => !o)} style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--c-p300)',
+              background: 'transparent', color: 'var(--c-p700)', fontSize: 13, fontWeight: 600,
+            }}>
+              导入外部计划
+            </button>
+          </div>
+          <button onClick={copyPrompt} style={{
+            width: '100%', padding: '8px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--c-p200)', background: 'transparent', color: 'var(--c-p500)', fontSize: 11, fontWeight: 600,
+          }}>
+            复制Prompt到外部AI
+          </button>
+
+          {aiPreview && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--c-p100)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-p800)', marginBottom: 6 }}>推荐计划预览</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                {aiPreview.map((r, i) => (
+                  <div key={i} style={{ fontSize: 12, color: 'var(--c-p600)', display: 'flex', gap: 6 }}>
+                    <span style={{ color: 'var(--c-primary)', fontWeight: 700 }}>{i + 1}.</span>
+                    <span>{r.name} · {typeLabels(r.task_types)} · {r.duration_minutes}分钟 · {formatDays(r.plan_days)}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={applyAI} style={{
+                  flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: 'none',
+                  background: 'var(--c-primary)', color: '#fff', fontSize: 13, fontWeight: 700,
+                }}>应用推荐计划</button>
+                <button onClick={() => setAiPreview(null)} style={{
+                  flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--c-p200)',
+                  background: 'transparent', color: 'var(--c-p600)', fontSize: 13, fontWeight: 600,
+                }}>取消</button>
+              </div>
+            </div>
+          )}
+
+          {importOpen && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--c-p100)' }}>
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder='粘贴 JSON 计划数组，如：[{"name":"背单词","task_types":["word"],"duration_minutes":15,"plan_days":[1,2,3,4,5]}]'
+                style={{ ...inp, minHeight: 88, fontSize: 12, lineHeight: 1.5, resize: 'vertical' }}
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button onClick={applyImport} style={{
+                  flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: 'none',
+                  background: 'var(--c-primary)', color: '#fff', fontSize: 13, fontWeight: 700,
+                }}>导入并创建</button>
+                <button onClick={() => { setImportOpen(false); setImportText('') }} style={{
+                  flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--c-p200)',
+                  background: 'transparent', color: 'var(--c-p600)', fontSize: 13, fontWeight: 600,
+                }}>取消</button>
+              </div>
+            </div>
+          )}
+        </Card>
+
+        <div style={{ height: 8 }} />
       </div>
-    </Card>
-  )
-}
-
-function DayPicker({ days, onToggle, size }) {
-  const small = size === 'small'
-  return (
-    <div style={{ display: 'flex', gap: 5 }}>
-      {WEEK.map((d) => {
-        const active = days.includes(d.v)
-        return (
-          <button
-            key={d.v}
-            onClick={() => onToggle(d.v)}
-            style={{
-              flex: 1,
-              padding: small ? '7px 0' : '9px 0',
-              borderRadius: 10,
-              border: '1px solid ' + (active ? 'var(--c-teal)' : 'var(--c-p200)'),
-              background: active ? 'color-mix(in srgb, var(--c-teal) 14%, transparent)' : 'var(--c-surface)',
-              color: active ? 'var(--c-teal)' : 'var(--c-p500)',
-              fontSize: small ? 12 : 13,
-              fontWeight: 600,
-            }}
-          >
-            {d.l}
-          </button>
-        )
-      })}
     </div>
   )
 }
 
-function Field({ label, children }) {
+function Divider({ text }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-      <span style={{ fontSize: 13, color: 'var(--c-p600)' }}>{label}</span>
-      {children}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 10px' }}>
+      <div style={{ flex: 1, height: 1, background: 'var(--c-p200)' }} />
+      <span style={{ fontSize: 11, color: 'var(--c-p500)', whiteSpace: 'nowrap' }}>· {text} ·</span>
+      <div style={{ flex: 1, height: 1, background: 'var(--c-p200)' }} />
     </div>
   )
+}
+
+function Label({ children }) {
+  return <div style={{ fontSize: 12, color: 'var(--c-p600)', margin: '10px 0 6px', fontWeight: 600 }}>{children}</div>
+}
+
+function chipStyle(active) {
+  return {
+    padding: '7px 12px', borderRadius: 'var(--radius-sm)',
+    border: '1px solid ' + (active ? 'var(--c-primary)' : 'var(--c-p200)'),
+    background: active ? 'color-mix(in srgb, var(--c-primary) 14%, transparent)' : 'var(--c-surface)',
+    color: active ? 'var(--c-primary)' : 'var(--c-p600)', fontSize: 12, fontWeight: 600,
+  }
 }
 
 function formatDays(arr) {
@@ -285,23 +443,23 @@ function formatDays(arr) {
   return arr.map((v) => map[v]).join(' ')
 }
 
-const numInput = {
-  width: 110,
-  padding: '8px 12px',
-  border: '1px solid var(--c-p200)',
-  borderRadius: 10,
-  fontSize: 14,
-  background: 'var(--c-bg)',
-  color: 'var(--c-p800)',
-  outline: 'none',
-  textAlign: 'right',
+function recommendedPlan() {
+  return [
+    { name: '背诵新单词', task_types: ['word'], duration_minutes: 15, plan_days: [1, 2, 3, 4, 5, 6, 7] },
+    { name: '语法专项练习', task_types: ['grammar'], duration_minutes: 10, plan_days: [2, 4, 6] },
+    { name: '泰语阅读训练', task_types: ['reading'], duration_minutes: 15, plan_days: [1, 3, 5] },
+    { name: '听力磨耳朵', task_types: ['listening'], duration_minutes: 10, plan_days: [1, 2, 3, 4, 5] },
+    { name: '口语跟读', task_types: ['speaking'], duration_minutes: 10, plan_days: [3, 5, 7] },
+  ]
 }
+
 const inp = {
   width: '100%',
   padding: '10px 12px',
   border: '1px solid var(--c-p200)',
-  borderRadius: 10,
+  borderRadius: 'var(--radius-sm)',
   background: 'var(--c-surface)',
   color: 'var(--c-p800)',
   outline: 'none',
+  fontSize: 14,
 }

@@ -52,12 +52,13 @@ export default function PhraseCard({
           {item.thai}
         </div>
 
-        {/* 分词结构（小字） */}
+        {/* 分词结构（小字）：优先用 curated segmented，否则走分词器 */}
         <div style={{ marginTop: 2 }}>
           <ThaiSentence
             text={item.thai}
             type="sentence"
             separator=" + "
+            tokens={item.segmented && item.segmented.length ? item.segmented : undefined}
             style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--c-p600)' }}
           />
         </div>

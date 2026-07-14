@@ -38,13 +38,20 @@ export default function ThaiSentence({
   className = '',
   style = {},
   onWordClick,
+  tokens: presetTokens,
 }) {
   const [tokens, setTokens] = useState([])
   const [loading, setLoading] = useState(type !== 'word')
   const [bubble, setBubble] = useState(null) // { word, x, y, status, meanings }
 
-  // 分词：原生词条直接下划线；长例句走缓存/分词客户端
+  // 分词：优先使用外部传入的预分词（如短语数据的 segmented 金标准）；
+  // 原生词条直接下划线；其余长例句走缓存/分词客户端
   useEffect(() => {
+    if (presetTokens && presetTokens.length) {
+      setTokens(presetTokens.map((t) => ({ text: t.text, type: 'word' })))
+      setLoading(false)
+      return
+    }
     if (type === 'word') {
       setTokens([{ text, type: 'word' }])
       setLoading(false)
@@ -66,7 +73,7 @@ export default function ThaiSentence({
     return () => {
       cancelled = true
     }
-  }, [text, type])
+  }, [text, type, presetTokens])
 
   // 点击单词 → 弹气泡 + 查词
   const handleWordClick = useCallback(

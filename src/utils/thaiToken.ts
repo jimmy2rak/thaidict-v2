@@ -116,6 +116,16 @@ const BUILTIN: string[] = [
   // 复合词（避免被错误拆开）
   'ผู้ชาย', 'ผู้หญิง', 'ต้นไม้', 'ดอกไม้', 'รถไฟ', 'เครื่องบิน', 'โทรศัพท์', 'วันเกิด', 'ปีใหม่',
   'โรงเรียน', 'โรงพยาบาล', 'มหาวิทยาลัย',
+  // 短语 / 佛学 / 常用补充词（防止整串连续泰语被误判为一个词 → 表现为“未分词”）
+  'คือ', 'ธรรมะ', 'หน้าที่', 'จง', 'ความดี', 'ถาวร', 'ภาษาไทย', 'ทุกวัน',
+  'มี', 'เป็น', 'ใน', 'กว่า', 'เมื่อ', 'อย่า', 'ควร', 'ต้อง', 'ก็ตาม',
+  'กรรม', 'บุญ', 'ปัญญา', 'นิพพาน', 'พุทธ', 'ธรรม', 'สงฆ์', 'สัพพะ', 'มรรค', 'ผล',
+  // 常用词补充（恢复常见词的首字母回退质量，避免被拆成单字符）
+  'หัว', 'ตัก', 'ขึ้น', 'ลง', 'รีบ', 'เข้า', 'ตา', 'ใจ', 'มือ', 'ปาก', 'คอ', 'แขน', 'ขา',
+  'เงิน', 'ทอง', 'ไฟ', 'ลม', 'ดิน', 'ฟ้า', 'เสื้อ', 'กางเกง', 'รองเท้า', 'หมวก',
+  'งาน', 'ชีวิต', 'โลก', 'ความจริง', 'ความรู้', 'เพราะ', 'เพื่อ', 'ถ้า', 'กับ', 'ตาม',
+  'ง่าย', 'ยาก', 'ใกล้', 'ไกล', 'สบาย', 'ลำบาก', 'ยิ้ม', 'ถาม', 'ตอบ', 'บอก',
+  'เอา', 'วาง', 'หยุด', 'เริ่ม', 'จบ', 'กลับ', 'ถึง', 'จาก', 'แก้', 'เลิก', 'ซ่อม', 'ลบ', 'สร้าง',
 ]
 
 // ---------- 3. 自定义词库（持久化到 localStorage） ----------
@@ -218,20 +228,11 @@ export function tokenize(input: string): Token[] {
       tokens.push({ text: matched, type: 'word' })
       i += matched.length
     } else {
-      // 无词典命中：消费一段连续泰语字符。
-      // 前引字(ห/อ/ฮ)+辅音、双辅音(ทร/คร)、堆叠元音 都落在同一泰语区块，
-      // 因此会天然作为一个音节整体，不会在中间断开。
-      let j = i
-      while (j < n && isThai(clean[j])) j++
-      const piece = clean.slice(i, j)
-      if (piece.length > 0) {
-        tokens.push({ text: piece, type: 'word' })
-        i = j
-      } else {
-        // 其它字符（如拉丁字母）：整体消费
-        tokens.push({ text: ch, type: 'word' })
-        i++
-      }
+      // 无词典命中：只消费【一个字符】并继续向后扫描。
+      // 这是 newmm 的标准回退——绝不要把整段连续泰语一次性吞掉，
+      // 否则整句会变成一个 token，表现为“未分词”（佛学短语曾因此整句不拆分）。
+      tokens.push({ text: ch, type: 'word' })
+      i++
     }
   }
   return tokens
@@ -263,8 +264,10 @@ export function simpleSyllableSplit(input: string): Token[] {
     while (j < n && isThai(clean[j])) j++
     const piece = clean.slice(i, j)
     if (piece.length > 0) {
-      tokens.push({ text: piece, type: 'word' })
-      i = j
+      // 兜底：也只取一个字符，与 tokenize 保持一致，
+      // 避免整串连续泰语被当作一个词。
+      tokens.push({ text: clean[i], type: 'word' })
+      i = i + 1
     } else {
       tokens.push({ text: ch, type: 'word' })
       i++
@@ -283,7 +286,7 @@ export function tokenizeFull(input: string): TokenizeResult {
 }
 
 // ---------- 5. 前端请求客户端（永久缓存 + 300ms 防抖 + 异常兜底） ----------
-const CACHE_PREFIX = 'thai_token_cache::' // localStorage 缓存前缀（永久保存）
+const CACHE_PREFIX = 'thai_token_cache::v2' // localStorage 缓存前缀（永久保存）；v2 废弃旧版整句单 token 的错误缓存
 const DEBOUNCE_MS = 300 // 防抖窗口：窗口内重复相同文本直接复用结果
 const _memo = new Map<string, Promise<Token[]>>() // 进行中的请求
 const _recent = new Map<string, { ts: number; value: Token[] }>() // 近期结果（防抖复用）

@@ -129,9 +129,9 @@ export default function WordDetailPage({ word }) {
           <Card key={i} style={{ marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               {data.senses.length > 1 && (
-                <span style={{ minWidth: 20, height: 20, borderRadius: '50%', background: 'var(--c-teal)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <span style={{ minWidth: 20, height: 20, borderRadius: '50%', background: 'var(--c-p800)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
               )}
-              <Badge color="var(--c-teal)">{s.pos || '—'}</Badge>
+              <Badge color="var(--c-p800)">{s.pos || '—'}</Badge>
               <span style={{ fontSize: 15, color: 'var(--c-p800)', fontWeight: 500 }}>{s.meaning}</span>
             </div>
             {s.examples?.map((ex, j) => (
