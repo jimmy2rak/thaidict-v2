@@ -12,35 +12,43 @@
 
 -- ----------------------------------------------------------------------------
 -- A. 公开读 RLS：确保已存在的公开表对 anon/authenticated 可读
---    （旧系统若已设策略，CREATE POLICY IF NOT EXISTS 会自动跳过，不重复、不报错）
+--    注意：PostgreSQL 的 CREATE POLICY 不支持 IF NOT EXISTS，故统一采用
+--          「先 DROP POLICY IF EXISTS 再 CREATE POLICY」写法，可重复安全执行。
 -- ----------------------------------------------------------------------------
 alter table dictionary      enable row level security;
 alter table sentences       enable row level security;
 alter table daily_picks     enable row level security;
 alter table community_words enable row level security;
 
-create policy if not exists "public_read_dictionary"
+drop policy if exists "public_read_dictionary"  on dictionary;
+create policy "public_read_dictionary"
   on dictionary for select to anon, authenticated using (true);
-create policy if not exists "public_read_sentences"
+drop policy if exists "public_read_sentences"   on sentences;
+create policy "public_read_sentences"
   on sentences for select to anon, authenticated using (true);
-create policy if not exists "public_read_daily_picks"
+drop policy if exists "public_read_daily_picks" on daily_picks;
+create policy "public_read_daily_picks"
   on daily_picks for select to anon, authenticated using (true);
-create policy if not exists "public_read_community"
+drop policy if exists "public_read_community"   on community_words;
+create policy "public_read_community"
   on community_words for select to anon, authenticated using (true);
 
 -- dictionary_full 是已存在的【视图】（映射 dictionary + word_freqs + word_sources + user_sentences）。
 -- ⚠️ PostgreSQL 不允许对视图启用 RLS，故【不】对其建 policy；
 --    视图可读性由底层基表的 anon 可读策略 + 视图级 grant select 保证。
--- 确保视图所依赖的基表对 anon/authenticated 可读（已存在则 CREATE POLICY IF NOT EXISTS 跳过）：
+-- 确保视图所依赖的基表对 anon/authenticated 可读（先删后建，可重复跑）：
 alter table word_freqs      enable row level security;
 alter table word_sources    enable row level security;
 alter table user_sentences  enable row level security;
 
-create policy if not exists "public_read_word_freqs"
+drop policy if exists "public_read_word_freqs"     on word_freqs;
+create policy "public_read_word_freqs"
   on word_freqs for select to anon, authenticated using (true);
-create policy if not exists "public_read_word_sources"
+drop policy if exists "public_read_word_sources"   on word_sources;
+create policy "public_read_word_sources"
   on word_sources for select to anon, authenticated using (true);
-create policy if not exists "public_read_user_sentences"
+drop policy if exists "public_read_user_sentences" on user_sentences;
+create policy "public_read_user_sentences"
   on user_sentences for select to anon, authenticated using (true);
 
 -- 视图级 SELECT 授权（前端 anon key 读取视图需要该权限）
@@ -75,7 +83,8 @@ create table if not exists user_achievements (
   unique (user_id, badge_key)
 );
 alter table user_achievements enable row level security;
-create policy if not exists "own_achievements" on user_achievements
+drop policy if exists "own_achievements" on user_achievements;
+create policy "own_achievements" on user_achievements
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- 新增 B：user_roles（角色与权限） src/lib/db/roles.js
@@ -88,7 +97,8 @@ create table if not exists user_roles (
   unique (user_id)
 );
 alter table user_roles enable row level security;
-create policy if not exists "own_roles" on user_roles
+drop policy if exists "own_roles" on user_roles;
+create policy "own_roles" on user_roles
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- 新增 C：pending_approvals（AI 词条/句子入库审批） src/lib/db/approvals.js
@@ -106,7 +116,8 @@ create table if not exists pending_approvals (
 create index if not exists idx_approvals_status on pending_approvals (status);
 alter table pending_approvals enable row level security;
 -- 审批列表仅管理员可读写；普通用户无策略即被 RLS 拒绝（由 admin 后端用 service_role 访问）
-create policy if not exists "admin_approvals" on pending_approvals
+drop policy if exists "admin_approvals" on pending_approvals;
+create policy "admin_approvals" on pending_approvals
   for all to authenticated
   using (exists (select 1 from user_roles where user_id = auth.uid() and role in ('admin','super_admin')))
   with check (exists (select 1 from user_roles where user_id = auth.uid() and role in ('admin','super_admin')));
@@ -123,7 +134,8 @@ create table if not exists user_diaries (
 );
 create index if not exists idx_diaries_user on user_diaries (user_id);
 alter table user_diaries enable row level security;
-create policy if not exists "own_diaries" on user_diaries
+drop policy if exists "own_diaries" on user_diaries;
+create policy "own_diaries" on user_diaries
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 create table if not exists user_diary_images (
@@ -135,7 +147,8 @@ create table if not exists user_diary_images (
 );
 create index if not exists idx_diary_images on user_diary_images (diary_id);
 alter table user_diary_images enable row level security;
-create policy if not exists "own_diary_images" on user_diary_images
+drop policy if exists "own_diary_images" on user_diary_images;
+create policy "own_diary_images" on user_diary_images
   for all to authenticated
   using (exists (select 1 from user_diaries d where d.id = diary_id and d.user_id = auth.uid()))
   with check (exists (select 1 from user_diaries d where d.id = diary_id and d.user_id = auth.uid()));
@@ -152,7 +165,8 @@ create table if not exists user_practice_records (
 );
 create index if not exists idx_practice_user on user_practice_records (user_id);
 alter table user_practice_records enable row level security;
-create policy if not exists "own_practice" on user_practice_records
+drop policy if exists "own_practice" on user_practice_records;
+create policy "own_practice" on user_practice_records
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 create table if not exists user_practice_wrong (
@@ -165,7 +179,8 @@ create table if not exists user_practice_wrong (
   unique (user_id, word)
 );
 alter table user_practice_wrong enable row level security;
-create policy if not exists "own_practice_wrong" on user_practice_wrong
+drop policy if exists "own_practice_wrong" on user_practice_wrong;
+create policy "own_practice_wrong" on user_practice_wrong
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- 新增 F：word_books / user_word_book_progress（单词书） src/lib/db/wordbooks.js
@@ -178,7 +193,8 @@ create table if not exists word_books (
   created_at   timestamptz default now()
 );
 alter table word_books enable row level security;
-create policy if not exists "public_read_word_books" on word_books
+drop policy if exists "public_read_word_books" on word_books;
+create policy "public_read_word_books" on word_books
   for select to anon, authenticated using (true);
 
 create table if not exists user_word_book_progress (
@@ -191,13 +207,16 @@ create table if not exists user_word_book_progress (
   unique (user_id, book_id)
 );
 alter table user_word_book_progress enable row level security;
-create policy if not exists "own_word_book_progress" on user_word_book_progress
+drop policy if exists "own_word_book_progress" on user_word_book_progress;
+create policy "own_word_book_progress" on user_word_book_progress
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- ----------------------------------------------------------------------------
 -- D. RPC：search_words_zh（中文释义模糊搜索，search.js 调用）
 --    CREATE OR REPLACE 幂等；若已存在则更新实现，不破坏数据。
 -- ----------------------------------------------------------------------------
+-- PG 不允许 CREATE OR REPLACE 改返回类型；先删后建，确保可重复执行（无论库里是否已有旧版）。
+drop function if exists search_words_zh(text, int);
 create or replace function search_words_zh(search_term text, max_results int default 20)
 returns setof dictionary_full language sql stable security invoker as $$
   select *

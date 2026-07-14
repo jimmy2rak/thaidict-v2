@@ -86,6 +86,8 @@ grant select on dictionary_full_ext to anon, authenticated;
 -- §2 中文模糊搜索 RPC 改查统一视图（CREATE OR REPLACE 幂等）
 --    这样 search_words_zh 也能命中用户新增词。
 -- ----------------------------------------------------------------------------
+-- 先删后建：02 已建过 setof dictionary_full 版，PG 不允许 CREATE OR REPLACE 改返回类型，故先 DROP。
+drop function if exists search_words_zh(text, int);
 create or replace function search_words_zh(search_term text, max_results int default 20)
 returns setof dictionary_full_ext language sql stable security invoker as $$
   select *

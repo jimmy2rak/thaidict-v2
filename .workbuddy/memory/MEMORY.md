@@ -48,7 +48,11 @@ Next.js 14 App Router + React 18（JSX，非 TS）。当前本地 mock 阶段，
 - `supabase/DATABASE_MAPPING.md`：文档 20 表 → 新系统 db 文件 + 前端页 + 缺口结论。
 - 关键发现：文档 20 表前端入口新系统基本全覆盖（仅 `system_config` 后端only、`dictionary` 旧表并入 `dictionary_full` 不需前端）；新系统反是超集（成就/角色/审批/日记/练习/单词书）。
 - 环境变量用 Next.js 的 `NEXT_PUBLIC_SUPABASE_URL/ANON_KEY`（非文档写的 Vite `VITE_*`，已在 `src/lib/supabase.js` 实现）。
-- 上线顺序：跑 01-create-schema.sql → 00-fix-known-bugs.sql（幂等）→ 配 Vercel 环境变量 → `isSupabaseConfigured` 自动切换真实后端。
+- ⚠️ **上线顺序（按库状态二选一，切勿混用）**：
+  - **已有库（你现在是这种，31 张表+6万词）**：跑 `02-sync-existing.sql` → `03-extend-dictionary-full.sql`（建 `dictionary_full_ext` 统一视图）→ `00-fix-known-bugs.sql`（均幂等）→ 配 Vercel 环境变量 → `isSupabaseConfigured` 自动切换真实后端。
+  - **全新空库（仅首次从零建库时）**：跑 `01-create-schema.sql` → `00-fix-known-bugs.sql`。
+  - **已有库绝不可跑 `01`**：01 给空库设计，其 policy 为「先 `drop policy if exists` 再 `create policy`」的裸建形式（非 `if not exists`），在已有库若同名策略已存在会冲突中断、留半成品。✅ **02 已全量修正为安全写法**：policy = 先 `drop policy if exists` 再 `create policy`；表/列/函数/视图分别用 `create table if not exists`/`add column if not exists`/`drop function if exists`+`create or replace`/`create or replace view`，全程零 DML，对 6 万词安全。⚠️ **关键坑（本轮翻车点）**：**PostgreSQL 的 `CREATE POLICY` 不支持 `IF NOT EXISTS` 语法**，误用会报 `42601: syntax error at or near "not"`；统一用「先删后建」替代。
+  - 两个脚本均**纯 DDL、无任何 INSERT/UPDATE/DELETE**，不会动 62101 词。
 - 软缺口（未做）：`user_sentence_bookmarks` 无独立"我的收藏句子"列表页（句子夹 folder 已覆盖），待用户确认是否加。
 
 ## 部署 / 环境变量（2026-07-14 落地）
