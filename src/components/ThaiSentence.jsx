@@ -106,34 +106,43 @@ export default function ThaiSentence({
     )
   }
 
-  // 仅非空格 token 参与渲染；单词之间用 separator 连接
+  // 仅非空格 token 参与渲染；只有「分好词的词汇块」(type==='word') 之间才加分隔符，
+  // 未切分词块(residual)/标点不加分隔符、也不拆成单字母。
   const visible = tokens.filter((t) => t.type !== 'space')
 
   return (
     <span className={className} style={{ fontFamily: 'var(--th-font)', ...style }}>
-      {visible.map((t, idx) => (
-        <React.Fragment key={idx}>
-          {t.type === 'word' ? (
-            <u
-              onClick={(e) => {
-                e.stopPropagation()
-                handleWordClick(t.text, e)
-              }}
-              style={{
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                textUnderlineOffset: 3,
-                color: 'var(--c-p800)',
-              }}
-            >
-              {t.text}
-            </u>
-          ) : (
-            <span style={{ color: 'var(--c-p700)' }}>{t.text}</span>
-          )}
-          {idx < visible.length - 1 && <span style={{ opacity: 0.5 }}>{separator}</span>}
-        </React.Fragment>
-      ))}
+      {visible.map((t, idx) => {
+        const isWord = t.type === 'word'
+        const prev = visible[idx - 1]
+        // 分隔符仅出现在「前一个也是词块、且当前也是词块」时（避免词块与未切块之间出现多余 +）
+        const showSep = isWord && prev && prev.type === 'word'
+        return (
+          <React.Fragment key={idx}>
+            {showSep && <span style={{ opacity: 0.5 }}>{separator}</span>}
+            {isWord ? (
+              <u
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleWordClick(t.text, e)
+                }}
+                style={{
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: 3,
+                  color: 'var(--c-p800)',
+                }}
+              >
+                {t.text}
+              </u>
+            ) : (
+              <span style={{ color: t.type === 'punct' ? 'var(--c-p700)' : 'var(--c-p800)' }}>
+                {t.text}
+              </span>
+            )}
+          </React.Fragment>
+        )
+      })}
 
       {bubble && (
         <WordBubble

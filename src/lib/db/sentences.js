@@ -116,7 +116,7 @@ export async function getSentenceById(id, userId) {
   const { data } = await safeQuery(
     supabase.from('sentences').select('*').eq('id', id).maybeSingle()
   )
-  if (data) return data
+  if (data) return normalizeSentence(data)
   if (userId) {
     const { data: ud } = await safeQuery(
       supabase
@@ -126,7 +126,7 @@ export async function getSentenceById(id, userId) {
         .eq('submitted_by', userId)
         .maybeSingle()
     )
-    if (ud) return ud
+    if (ud) return normalizeSentence(ud)
   }
   return null
 }

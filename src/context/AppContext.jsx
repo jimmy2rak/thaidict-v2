@@ -18,7 +18,8 @@ import {
 } from '../lib/db/index.js'
 import { callAiProxy } from '../lib/ai-proxy.js'
 import { transformWordData, transformCommunityWord } from '../lib/utils.js'
-import { setDictWords } from '../utils/thaiSegment.js'
+import { setDictWords as setSegmentDict } from '../utils/thaiSegment.js'
+import { setDictWords as setTokenDict } from '../utils/thaiToken'
 import { seedIfNeeded, getMockSession, getGlobal } from '../lib/mock/store.js'
 
 const AppContext = createContext(null)
@@ -163,9 +164,8 @@ export function AppProvider({ children }) {
     document.documentElement.style.setProperty('--th-font', thFamily)
   }, [chineseFont, thaiFont])
 
-  // 登录后加载分词词典
+  // 加载分词词典（词典公开可读，登录前后都加载，保证未登录时首页/每日推荐也能正确分词）
   useEffect(() => {
-    if (!session) return
     let cancelled = false
     const load = async () => {
       if (isSupabaseConfigured) {
@@ -179,10 +179,16 @@ export function AppProvider({ children }) {
           if (data.length < 1000) break
           from += 1000
         }
-        if (!cancelled) setDictWords([...words])
+        if (!cancelled) {
+          setSegmentDict([...words])
+          setTokenDict([...words])
+        }
       } else {
         const dict = getGlobal('dictionary', [])
-        if (!cancelled) setDictWords(dict.map((r) => r.word))
+        if (!cancelled) {
+          setSegmentDict(dict.map((r) => r.word))
+          setTokenDict(dict.map((r) => r.word))
+        }
       }
     }
     load()
