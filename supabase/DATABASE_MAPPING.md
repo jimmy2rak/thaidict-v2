@@ -63,14 +63,19 @@
 文档 20 表中，**18 张表均已具备前端入口**；剩余 2 张（`system_config` 后端配置、`dictionary_full` 视图定义本身）按架构本就不需要/不允许前端直接改。
 → **按本次指令"若发现数据在新系统中没有前端入口则补"，结论为：无需新增前端入口。**
 
-### 3.4 用户新增词/句并入 `dictionary_full` 映射（按最新要求）
-- **用户新增【词】**：存于 `community_words`（社区共建/AI 生成词条）。
-  - 现状：`search.js` 已单独查 `community_words` 并在前端与 `dictionary_full` 结果合并、按词去重 → 用户新增词**已可被搜到、进词条详情**。
-  - 进阶（可选，见 `migrations/03-extend-dictionary-full.sql`）：把 `community_words` 以 `UNION ALL` 并入 `dictionary_full` 视图，使前端只查一个视图即可。该脚本为安全模板，**必须先用你真实库的视图定义（`pg_get_viewdef`）定稿**，绝不盲改既有视图。
-- **用户新增【句子】**：句子与词结构不同，不进 `dictionary_full` 词视图；按你的选择走**独立 `user_sentences` 表**（与 `sentences` 同结构 + `user_id`）。
+### 3.4 用户新增词/句并入 `dictionary_full` 映射（已定稿，基于真实库结构）
+- **用户新增【词】**：存于 `community_words`（真实列：`id uuid` / `word` / `romanization` / `senses jsonb` / `synonyms jsonb` / `antonyms jsonb` / `learner_associations jsonb` / `submitted_by uuid` / `source text` / `zh_hint text` / `created_at`；⚠️ 无 `status` 列）。
+  - `migrations/03-extend-dictionary-full.sql` 已定稿：新建 superset 视图 **`dictionary_full_ext`** = `dictionary_full`（原视图，已含 freq/source/user_sentence_count 映射） `UNION ALL` `community_words`。
+    - **类型对齐**：`dictionary_full.id`(bigint) 与 `community_words.id`(uuid) 统一 cast 成 `text`，社区词加 `cw_` 前缀防冲突；`community_words.synonyms/antonyms`(jsonb) → `text[]`（`jsonb_array_elements` 兼容字符串数组与 `{word}` 对象数组两种形态）。
+    - **不重建/不改写**原 `dictionary_full` 视图（保留你已有的 freq/source 映射）；可随时 DROP `dictionary_full_ext` 回退。
+    - 视图级 `grant select ... to anon, authenticated`，前端 anon key 可读。
+  - **前端读取**（`src/lib/db/search.js` 四个函数）：优先查 `dictionary_full_ext`；若视图尚未创建（未跑 03），自动回退到「`dictionary_full` + `community_words` 双查询」。部署无需强制先跑 03。
+  - RPC `search_words_zh` 在 03 中改查 `dictionary_full_ext`，中文模糊搜也能命中用户新增词。
+- **用户新增【句子】**：句子与词结构不同，不进词视图；按你的选择走**独立 `user_sentences` 表**（与 `sentences` 同结构 + 属主列）。
   - 已实现：`src/lib/db/sentences.js` 在查询层 `UNION` 合并——`getSentencesByCategory(category, userId)` / `getSentenceById(id, userId)` 同时查 `sentences`（全局）与 `user_sentences`（当前用户），前端统一渲染；并新增 `addUserSentence(userId, sentence)` / `getUserSentencesList(userId)` 写入/读取助手（`PhrasesSection` 已传入 `userId`）。
   - mock 模式：用户句子存于 `getUserColl(userId,'user_sentences')` 集合。
-  - ⚠️ 假设 `user_sentences` 的属主列为 `user_id`（RLS 应为 `user_id = auth.uid()`）。若你真实表用其他列（如 `created_by`），请告知，我同步修正 `sentences.js` 的 `.eq('user_id', userId)` 与读断言。
+  - 与 `dictionary_full` 视图里已算好的 `user_sentence_count`（按 `related_words` + `status='approved'` 计）互补，不冲突。
+  - ⚠️ **待你确认**：`user_sentences` 的「属主列」具体叫什么？你刚说"id uuid"应为该表主键；我当前按 `user_id` 写（`.eq('user_id', userId)` 共 4 处）。若真实列是 `submitted_by` / `created_by` 等，告诉我，我改一行即可（4 处同步）。
 
 ### 3.2 软缺口（可选增强，未必要做）
 - **`user_sentence_bookmarks` 无独立列表页**：用户可"星标收藏句子"（动作已接），但页面里只有"句子夹"（folder 机制）能列出已存句子，没有专门展示"我星标的句子"的列表。

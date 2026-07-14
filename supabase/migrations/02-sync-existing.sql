@@ -28,11 +28,23 @@ create policy if not exists "public_read_daily_picks"
 create policy if not exists "public_read_community"
   on community_words for select to anon, authenticated using (true);
 
--- dictionary_full 是已存在的视图（映射 dictionary + word_freqs + word_sources）。
--- 不重建、不改动其定义；仅确保 anon/authenticated 可读（前端查词/词条详情依赖）。
-alter table dictionary_full enable row level security;
-create policy if not exists "public_read_dictionary_full"
-  on dictionary_full for select to anon, authenticated using (true);
+-- dictionary_full 是已存在的【视图】（映射 dictionary + word_freqs + word_sources + user_sentences）。
+-- ⚠️ PostgreSQL 不允许对视图启用 RLS，故【不】对其建 policy；
+--    视图可读性由底层基表的 anon 可读策略 + 视图级 grant select 保证。
+-- 确保视图所依赖的基表对 anon/authenticated 可读（已存在则 CREATE POLICY IF NOT EXISTS 跳过）：
+alter table word_freqs      enable row level security;
+alter table word_sources    enable row level security;
+alter table user_sentences  enable row level security;
+
+create policy if not exists "public_read_word_freqs"
+  on word_freqs for select to anon, authenticated using (true);
+create policy if not exists "public_read_word_sources"
+  on word_sources for select to anon, authenticated using (true);
+create policy if not exists "public_read_user_sentences"
+  on user_sentences for select to anon, authenticated using (true);
+
+-- 视图级 SELECT 授权（前端 anon key 读取视图需要该权限）
+grant select on dictionary_full to anon, authenticated;
 
 -- ----------------------------------------------------------------------------
 -- B. 已有表补新列（仅 ADD COLUMN IF NOT EXISTS，存在则跳过）

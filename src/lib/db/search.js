@@ -54,6 +54,21 @@ export async function searchWords(query) {
   if (!supabase || !query) return []
   const q = query.trim()
   const lc = q.toLowerCase()
+  // 优先走统一视图 dictionary_full_ext（dictionary_full ∪ community_words）。
+  // 若该视图尚未创建（未跑 03 迁移），自动回退到「dictionary_full + community_words」双查询。
+  const ext = await safeQuery(
+    supabase
+      .from('dictionary_full_ext')
+      .select('*')
+      .or(`word.eq.${q},word.ilike.%${lc}%,senses::text.ilike.%${lc}%`)
+      .limit(40)
+  )
+  if (!ext.error && ext.data) {
+    return ext.data.map((r) =>
+      r.origin === 'community' ? transformCommunityWord(r) : transformWordData(r)
+    )
+  }
+  // —— 回退路径 ——
   const [exact, fuzzy, zh, comm] = await Promise.all([
     safeQuery(supabase.from('dictionary_full').select('*').eq('word', q).limit(5)),
     safeQuery(supabase.from('dictionary_full').select('*').ilike('word', `%${lc}%`).limit(20)),
@@ -85,6 +100,11 @@ export async function searchWords(query) {
 export async function getWordByThai(word) {
   if (!isSupabaseConfigured) return mockGetWordByThai(word)
   if (!supabase || !word) return null
+  const ext = await safeQuery(
+    supabase.from('dictionary_full_ext').select('*').eq('word', word).maybeSingle()
+  )
+  if (!ext.error) return ext.data || null
+  // 视图未创建 → 回退
   const { data } = await safeQuery(
     supabase.from('dictionary_full').select('*').eq('word', word).maybeSingle()
   )
@@ -103,6 +123,14 @@ export async function getWordByText(text) {
 export async function getDictionaryCount() {
   if (!isSupabaseConfigured) return mockGetDictionaryCount()
   if (!supabase) return 0
+  const ext = await safeQuery(
+    supabase
+      .from('dictionary_full_ext')
+      .select('*', { count: 'exact', head: true })
+      .eq('enrichment_status', 'enriched')
+  )
+  if (!ext.error) return ext.count || 0
+  // 回退
   const { count } = await safeQuery(
     supabase
       .from('dictionary_full')
@@ -143,6 +171,15 @@ export async function getWordMeanings(word) {
     return null
   }
   if (!supabase) return null
+  const ext = await safeQuery(
+    supabase.from('dictionary_full_ext').select('senses').eq('word', word).maybeSingle()
+  )
+  if (!ext.error && ext.data && ext.data.senses) {
+    const arr = (ext.data.senses || []).map((s) => s.meaning).filter(Boolean)
+    if (arr.length) return arr
+    return null
+  }
+  // 回退
   const { data } = await safeQuery(
     supabase.from('dictionary_full').select('senses').eq('word', word).maybeSingle()
   )

@@ -500,11 +500,12 @@ create policy "public_read_sentences"   on sentences        for select to anon, 
 create policy "public_read_daily_picks" on daily_picks      for select to anon, authenticated using (true);
 create policy "public_read_word_books"  on word_books       for select to anon, authenticated using (true);
 
--- dictionary_full 视图：前端查词/词条详情的唯一读取入口，必须 anon/authenticated 可读。
--- 仅补 RLS + 公开读策略；绝不改动视图定义本身（保留用户已有的 freq/source 映射）。
-alter table dictionary_full enable row level security;
-create policy if not exists "public_read_dictionary_full"
-  on dictionary_full for select to anon, authenticated using (true);
+-- dictionary_full 视图：前端查词/词条详情的读取入口。
+-- ⚠️ 它是【视图】，PostgreSQL 不允许对视图启用 RLS，故不建 policy；
+--    可读性由底层 dictionary 表的 public_read_dictionary 策略 + 视图级 grant 保证。
+--    （真实库里 dictionary_full 已映射 dictionary + word_freqs + word_sources，
+--      这些基表的 anon 可读策略由 02-sync-existing.sql 兜底补齐。）
+grant select on dictionary_full to anon, authenticated;
 
 -- community_words：可读 + 登录用户可写
 alter table community_words enable row level security;
