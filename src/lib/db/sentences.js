@@ -63,7 +63,7 @@ export async function getSentenceById(id, userId) {
   return null
 }
 
-// 读取当前用户新增的句子列表（real：user_sentences 按 user_id；mock：localStorage 集合）
+// 读取当前用户新增的句子列表（real：user_sentences 按 submitted_by；mock：localStorage 集合）
 export async function getUserSentencesList(userId) {
   if (!isSupabaseConfigured) return getUserSentences(userId)
   if (!supabase || !userId) return []
@@ -73,7 +73,7 @@ export async function getUserSentencesList(userId) {
   return data || []
 }
 
-// 新增用户句子（写入 user_sentences，带 user_id；与 sentences 同结构字段）
+// 新增用户句子（写入 user_sentences，带 submitted_by；与 sentences 同结构字段）
 export async function addUserSentence(userId, sentence) {
   if (!sentence || !sentence.thai) return null
   if (!isSupabaseConfigured) {
