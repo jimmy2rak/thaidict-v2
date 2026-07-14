@@ -18,12 +18,17 @@ Next.js 14 App Router + React 18（JSX，非 TS）。当前本地 mock 阶段，
 6. 权限 `super_admin>admin>user`；AI 词条→`pending_approvals`→审批后入主词典。
 7. 打卡任务 `task_types` 为数组（多选：word/grammar/reading/listening/speaking/writing + 自定义字符串）；`task_type` 为兼容单值=数组首个。类型常量见 `src/lib/taskTypes.js`（`TASK_TYPES`/`typeLabel`/`typeLabels`），LearnPage 与 AdjustPlanSection 共用。
 
-## 设计系统（2026-07-13 新中式奶油轻泰式极简 · 补强版）
-- 底色 `--c-bg #F8F5EF`（更淡）、卡面 `--c-surface #FEFDFB`、文字 `--c-p800 #433B32`。
-- 主色 `--c-primary #A68A5B`（更鲜艳）；功能色 `--c-teal #7FBF6E` / `--c-gold #D4A84A` / `--c-rose #D36B58` / `--c-info #5FA3C2` / `--c-amber #E0B040`。
-- 圆角：Card 用 `--radius-md 18px`（原 lg 24 已弃用）；Card 内边距 `12px 14px`（原 18px 16px）；按钮：primary 实线描边、secondary 虚线描边。
-- 底部 Tab 彩色：home=teal / words=info / learn=gold / me=rose（`src/App.jsx` 的 `TABS.color`）。
-- 装饰：`src/components/Decorations.jsx`（佛塔/粽叶/碗盏）。旧色值已全局替换，新增代码勿用。
+## 设计系统（2026-07-14 新中式奶油·克制版 · 全局低饱和）
+- 底色 `--c-bg #F8F5EF`、卡面 `--c-surface #FEFDFB`、文字 `--c-p800 #433B32`。
+- 主色（主题色）`--c-primary #A68A5B`（暖褐金，全站强调/激活态统一用此棕）。
+- 功能点缀色（均低饱和、克制、无荧光绿/蓝）：
+  `--c-teal #8FA98C`（鼠尾草绿）/ `--c-gold #D4A84A`（浅金）/ `--c-rose #D36B58`（珊瑚陶土）/
+  `--c-info #6E8CA0`（雾霭蓝灰）/ `--c-amber #CBA14A`（暗琥珀）。
+- 圆角：Card `--radius-md 18px`、内边距 `12px 14px`；按钮 primary 实线描边 / secondary 虚线描边。
+- 底部 Tab 彩色：home=teal / words=info / learn=gold / me=rose（`src/App.jsx` `TABS.color`）。
+- 装饰：`src/components/Decorations.jsx`（佛塔/粽叶/碗盏）。
+- ⚠️ 已落地配色约定：单词本分类 Tab 激活、学习中心「今日打卡」进度环/完成圈/「一键完成」、近7天热力条、MiniStat「已打卡」均用主题棕 `--c-primary`；词条详情 3 按钮=加入文件夹(棕)/词形分析(蓝灰)/笔记(陶土红)，近义(绿)/反义(陶土红)/学习者(金)。
+- 改全局色时勿动 `--c-primary/--c-gold/--c-rose`（调整计划、一词多义依赖，保持原样）。
 
 ## 踩坑（别再犯）
 - React TDZ：hooks 依赖的派生 const 必须声明在所有 hooks 之前。

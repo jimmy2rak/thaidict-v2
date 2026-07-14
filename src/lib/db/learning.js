@@ -19,8 +19,17 @@ export async function saveLearningPlan(userId, plan) {
     return p
   }
   if (!supabase || !userId) return null
+  // 真实库：daily_minutes 落顶层列（LearnPage 读 plan?.daily_minutes），其余计划字段存 plan JSONB
   const { data, error } = await safeQuery(
-    supabase.from('user_learning_plans').upsert({ user_id: userId, ...plan }).select().single()
+    supabase
+      .from('user_learning_plans')
+      .upsert({
+        user_id: userId,
+        daily_minutes: (plan && plan.daily_minutes) || 15,
+        plan: plan || {},
+      })
+      .select()
+      .single()
   )
   if (error) {
     console.error('[saveLearningPlan]', error.message)
