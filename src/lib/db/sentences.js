@@ -29,7 +29,7 @@ function asArray(v) {
 // 真实 sentences 表字段：text(泰文) / category / literal_meaning(字面) / actual_meaning(实际)
 //   / learner_tip(学习者建议) / source / difficulty / tags[] / segmented(json) / created_at
 // 这里优先用真实列名，未知 schema 时再用候选名兜底 + 中文自动探测，确保既不崩也能正常显示。
-function normalizeSentence(raw) {
+export function normalizeSentence(raw) {
   if (!raw || typeof raw !== 'object') return null
   const thai = raw.text ?? raw.thai ?? raw.content ?? raw.word ?? ''
   const category = raw.category ?? raw.type ?? raw.tag ?? null

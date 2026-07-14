@@ -130,17 +130,32 @@ export default function WordDetailPage({ word }) {
       </div>
 
       <div className="scroll-y" style={{ flex: 1, padding: 16 }}>
-        {/* 词头 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)' }}>{data.word}</div>
-            {data.romanization && <div style={{ fontSize: 14, color: 'var(--c-p500)' }}>{data.romanization}</div>}
-            {meta.romanizationSource && (
-              <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 2 }}>罗马音来源：{meta.romanizationSource}</div>
-            )}
+        {/* 词头卡片 */}
+        <Card style={{ marginBottom: 14, padding: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 32, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)', lineHeight: 1.3 }}>
+                {data.word}
+              </div>
+              {data.romanization && (
+                <div style={{ fontSize: 15, color: 'var(--c-p500)', marginTop: 4 }}>{data.romanization}</div>
+              )}
+              {meta.romanizationSource && (
+                <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 2 }}>罗马音来源：{meta.romanizationSource}</div>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                {meta.senseCount != null && <Badge color="var(--c-primary)">{meta.senseCount} 个义项</Badge>}
+                {meta.origin && <Badge color="var(--c-info)">{meta.origin}</Badge>}
+                {meta.sources.map((src, i) => (
+                  <Badge key={i} color="var(--c-p500)">{src}</Badge>
+                ))}
+              </div>
+            </div>
+            <IconButton onClick={() => speak(data.word, { rate })} title="朗读" style={{ width: 44, height: 44 }}>
+              <Volume2 size={24} />
+            </IconButton>
           </div>
-          <IconButton onClick={() => speak(data.word, { rate })} title="朗读"><Volume2 size={22} /></IconButton>
-        </div>
+        </Card>
 
         {/* 义项 */}
         {data.senses.map((s, i) => (
@@ -154,45 +169,46 @@ export default function WordDetailPage({ word }) {
               {s.source && <Badge color="var(--c-p500)">{s.source}</Badge>}
               <span style={{ fontSize: 15, color: 'var(--c-p800)', fontWeight: 500 }}>{s.meaning}</span>
             </div>
-            {s.examples?.map((ex, j) => (
-              <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--c-p600)', marginTop: 4, fontFamily: 'var(--th-font)' }}>
-                <ThaiSentence text={ex.thai} type="sentence" style={{ fontFamily: 'var(--th-font)' }} />
-                <span style={{ color: 'var(--c-p500)', marginLeft: 2 }}>{ex.zh}</span>
-                <button
-                  onClick={() => speak(ex.thai, { rate })}
-                  title="朗读例句"
-                  style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, background: 'var(--c-p100)', border: 'none', color: 'var(--c-p700)', cursor: 'pointer', flexShrink: 0 }}
-                >
-                  <Volume2 size={15} />
-                </button>
-              </div>
-            ))}
+            {s.examples?.map((ex, j) => {
+              const exThai = ex.th ?? ex.thai ?? ''
+              return (
+                <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--c-p600)', marginTop: 4, fontFamily: 'var(--th-font)' }}>
+                  <ThaiSentence text={exThai} type="sentence" style={{ fontFamily: 'var(--th-font)' }} />
+                  <span style={{ color: 'var(--c-p500)', marginLeft: 2 }}>{ex.zh}</span>
+                  <button
+                    onClick={() => speak(exThai, { rate })}
+                    title="朗读例句"
+                    style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, background: 'var(--c-p100)', border: 'none', color: 'var(--c-p700)', cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    <Volume2 size={15} />
+                  </button>
+                </div>
+              )
+            })}
           </Card>
         ))}
 
-        {/* 近义词 / 反义词 */}
-        {(data.synonyms.length > 0 || data.antonyms.length > 0) && (
+        {/* 近义词 */}
+        {data.synonyms.length > 0 && (
           <Card style={{ marginBottom: 10 }}>
-            {data.synonyms.length > 0 && (
-              <div style={{ marginBottom: 6 }}>
-                <div style={{ fontSize: 12, color: 'var(--c-teal)', marginBottom: 4 }}>近义词</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {data.synonyms.map((s, i) => (
-                    <RelWord key={i} word={s.word} color="var(--c-teal)" meaning={meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
-                  ))}
-                </div>
-              </div>
-            )}
-            {data.antonyms.length > 0 && (
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--c-rose)', marginBottom: 4 }}>反义词</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {data.antonyms.map((s, i) => (
-                    <RelWord key={i} word={s.word} color="var(--c-rose)" meaning={meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
-                  ))}
-                </div>
-              </div>
-            )}
+            <div style={{ fontSize: 12, color: 'var(--c-teal)', marginBottom: 4 }}>近义词</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {data.synonyms.map((s, i) => (
+                <RelWord key={i} word={s.word} color="var(--c-teal)" meaning={meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* 反义词 */}
+        {data.antonyms.length > 0 && (
+          <Card style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 12, color: 'var(--c-rose)', marginBottom: 4 }}>反义词</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {data.antonyms.map((s, i) => (
+                <RelWord key={i} word={s.word} color="var(--c-rose)" meaning={meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
+              ))}
+            </div>
           </Card>
         )}
 

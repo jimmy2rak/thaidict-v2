@@ -245,7 +245,7 @@ function DailyWordCard({ word, onRefresh, onTap, refreshing, rate, userId }) {
           <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 2 }}>{first.meaning}</div>
           {first.examples?.[0] && (
             <div style={{ fontSize: 11, color: 'var(--c-p500)', marginTop: 2 }}>
-              {first.examples[0].thai} · {first.examples[0].zh}
+              {(first.examples[0].th ?? first.examples[0].thai ?? '')} · {first.examples[0].zh}
             </div>
           )}
         </div>
