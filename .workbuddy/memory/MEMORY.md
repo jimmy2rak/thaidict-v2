@@ -42,4 +42,10 @@ Next.js 14 App Router + React 18（JSX，非 TS）。当前本地 mock 阶段，
 
 ## 阶段进度
 阶段 1~3.6 ✅；阶段 4 ✅（A~G Bug 核对完成）；阶段 5 ✅（新中式奶油风格改造 + 补强：紧凑卡片、Tab 彩色、配色调鲜艳淡背景、学习中心打卡/调整计划、学习笔记联动）。
-下一步：阶段 6（接 Supabase + Vercel，需建 `user_roles`/`pending_approvals` 表 + 4 个 `app/api/*` Route Handlers）。
+下一步：阶段 6（接 Supabase + Vercel）。**Supabase 数据库映射已完成**：
+- `supabase/migrations/01-create-schema.sql`：建 20 文档表 + 9 新表 + 8 RPC + RLS + 唯一约束 + 索引（纯结构 DDL，不碰数据）。
+- `supabase/DATABASE_MAPPING.md`：文档 20 表 → 新系统 db 文件 + 前端页 + 缺口结论。
+- 关键发现：文档 20 表前端入口新系统基本全覆盖（仅 `system_config` 后端only、`dictionary` 旧表并入 `dictionary_full` 不需前端）；新系统反是超集（成就/角色/审批/日记/练习/单词书）。
+- 环境变量用 Next.js 的 `NEXT_PUBLIC_SUPABASE_URL/ANON_KEY`（非文档写的 Vite `VITE_*`，已在 `src/lib/supabase.js` 实现）。
+- 上线顺序：跑 01-create-schema.sql → 00-fix-known-bugs.sql（幂等）→ 配 Vercel 环境变量 → `isSupabaseConfigured` 自动切换真实后端。
+- 软缺口（未做）：`user_sentence_bookmarks` 无独立"我的收藏句子"列表页（句子夹 folder 已覆盖），待用户确认是否加。

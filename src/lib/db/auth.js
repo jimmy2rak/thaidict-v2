@@ -72,7 +72,7 @@ export async function updateUserPassword(newPassword) {
   return supabase.auth.updateUser({ password: newPassword })
 }
 
-// OTP（Brevo）。mock 生成固定验证码；real 走 Edge Function。
+// OTP（Brevo）。mock 生成固定验证码；real 走 Next.js Route Handler（/api/send-otp）。
 export async function sendOtp(email, purpose) {
   if (!isSupabaseConfigured) {
     const code = '123456'
@@ -80,15 +80,13 @@ export async function sendOtp(email, purpose) {
     return { data: { code }, error: null }
   }
   try {
-    const fnUrl = `${supabase.supabaseUrl}/functions/v1/send-otp`
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch(fnUrl, {
+    const res = await fetch('/api/send-otp', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, purpose }),
     })
     const json = await res.json()
-    return res.ok ? { data: json, error: null } : { data: null, error: json.error }
+    return res.ok ? { data: json.data, error: null } : { data: null, error: json.error }
   } catch (e) {
     return { data: null, error: e.message }
   }
@@ -104,16 +102,14 @@ export async function verifyBrevoOtp(email, code, purpose) {
     return { data: null, error: '验证码错误' }
   }
   try {
-    const fnUrl = `${supabase.supabaseUrl}/functions/v1/verify-otp`
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch(fnUrl, {
+    const res = await fetch('/api/verify-otp', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, code, purpose }),
     })
     const json = await res.json()
     if (res.ok) mockSetSession(MOCK_SESSION)
-    return res.ok ? { data: json, error: null } : { data: null, error: json.error }
+    return res.ok ? { data: json.data, error: null } : { data: null, error: json.error }
   } catch (e) {
     return { data: null, error: e.message }
   }
