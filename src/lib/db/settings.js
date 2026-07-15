@@ -4,12 +4,11 @@ import { safeQuery } from '../utils.js'
 import { getUserColl, setUserColl } from '../mock/store.js'
 
 const DEFAULTS = {
-  dict_direction: 'th_to_zh',
   color_mode: 'light',
   speech_rate: 1.0,
   font_size: 'medium',
-  chinese_font: 'noto_sans_sc',
-  thai_font: 'noto_sans_thai',
+  chinese_font: 'noto_serif_sc',
+  thai_font: 'sarabun',
   reminder_enabled: false,
   reminder_time: '20:00',
   reminder_frequency: 'daily',

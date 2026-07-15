@@ -31,7 +31,7 @@ export default function ProfilePage() {
   const initial = (name || '?').slice(0, 1).toUpperCase()
 
   const rows = [
-    { key: 'settings', icon: Settings, color: 'var(--c-teal)', label: '通用设置', desc: '主题、字体、字号、朗读速度、翻译方向' },
+    { key: 'settings', icon: Settings, color: 'var(--c-teal)', label: '通用设置', desc: '主题、中泰字体、字号、朗读速度' },
     { key: 'apikeys', icon: KeyRound, color: 'var(--c-gold)', label: 'AI API 密钥', desc: '管理大模型 API 与默认调用密钥' },
     { key: 'webdav', icon: CloudUpload, color: 'var(--c-info)', label: 'WebDAV 备份', desc: '学习数据加密备份与恢复' },
     { key: 'reminder', icon: Bell, color: 'var(--c-rose)', label: '学习提醒', desc: '每日提醒时间、频率、启用开关' },

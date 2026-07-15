@@ -54,7 +54,7 @@ export default function WordBookPage() {
         {!detail && tab === 'recent' && <RecentTab userId={userId} onTap={handleWordTap} />}
         {!detail && tab === 'wordfolders' && <FolderTab userId={userId} type="word" onOpen={(id, name) => setDetail({ type: 'wordfolder', id, name })} />}
         {!detail && tab === 'sentencefolders' && <FolderTab userId={userId} type="sentence" onOpen={(id, name) => setDetail({ type: 'sentencefolder', id, name })} />}
-        {!detail && tab === 'books' && <BookTab userId={userId} onOpen={(id, name) => setDetail({ type: 'book', id, name })} />}
+        {!detail && tab === 'books' && <BookTab onOpen={(id, name) => setDetail({ type: 'book', id, name })} />}
 
         {detail && detail.type === 'wordfolder' && <WordFolderDetail folderId={detail.id} name={detail.name} onBack={() => setDetail(null)} onTap={handleWordTap} />}
         {detail && detail.type === 'sentencefolder' && <SentenceFolderDetail folderId={detail.id} name={detail.name} onBack={() => setDetail(null)} onOpen={navigateTo} />}
@@ -158,6 +158,7 @@ function SentenceFolderDetail({ folderId, name, onBack, onOpen }) {
               key={s.id}
               item={s}
               onOpen={() => onOpen({ type: 'sentence', sentence: s })}
+              showCategory
             />
           ))}
         </div>
@@ -209,6 +210,27 @@ function BookDetail({ bookId, name, userId, onBack, onTap, toast }) {
         </button>
       )}
     </DetailShell>
+  )
+}
+
+// ---------- 单词书列表 ----------
+function BookTab({ onOpen }) {
+  const [books, setBooks] = useState(null)
+  useEffect(() => { getWordBooks().then(setBooks) }, [])
+  if (books === null) return <CenterSpinner />
+  if (books.length === 0) return <EmptyState icon="📚" text="还没有单词书" />
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {books.map((b) => (
+        <Card key={b.id} onClick={() => onOpen(b.id, b.name)} style={{ cursor: 'pointer' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>{b.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 2 }}>
+            {b.description ? b.description + ' · ' : ''}
+            {(b.entries && b.entries.length) || 0} 词
+          </div>
+        </Card>
+      ))}
+    </div>
   )
 }
 

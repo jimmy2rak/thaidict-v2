@@ -3,11 +3,15 @@ import { isSupabaseConfigured, supabase } from '../supabase.js'
 import { safeQuery } from '../utils.js'
 import { getGlobal, getUserColl, setUserColl } from '../mock/store.js'
 
-// 用户新增句子存于独立表 user_sentences（与 sentences 同结构 + submitted_by 属主列），
+// 用户新增句子存于独立表 user_sentences（真实列：sentence_th / sentence_zh / submitter_id /
+//   related_words / source / status / created_at），与 sentences 主表结构不同，
 // 由本层在查询时 UNION 合并，前端统一读取——不改动 sentences 主表与 dictionary_full 视图。
+import { getFolders, createFolder, addSentenceToFolder } from './folders.js'
 
 // 把任意来源的句子行归一化成 PhraseCard 期望的安全结构。
-// 真实 sentences 表字段名可能不与代码假设一致（如 thai→content、zh→translation），
+// 真实 sentences 表字段：text(泰文) / category / literal_meaning(字面) / actual_meaning(实际)
+//   / learner_tip(学习者建议) / source / difficulty / tags[] / segmented(json) / created_at
+// 真实 user_sentences 表字段：sentence_th(泰文) / sentence_zh(中文) / related_words / source
 // 这里做多候选名兜底 + 中文自动探测 + 类型校正，确保既不崩、也能尽量正常显示。
 function hasCJK(s) {
   return typeof s === 'string' && /[一-鿿]/.test(s)
@@ -25,13 +29,10 @@ function asArray(v) {
   if (typeof v === 'string' && v) return v.split(/[,，]/).map((s) => s.trim()).filter(Boolean)
   return []
 }
-// 把 sentences 真实表行归一化成 PhraseCard / SentenceDetailView 期望的结构。
-// 真实 sentences 表字段：text(泰文) / category / literal_meaning(字面) / actual_meaning(实际)
-//   / learner_tip(学习者建议) / source / difficulty / tags[] / segmented(json) / created_at
-// 这里优先用真实列名，未知 schema 时再用候选名兜底 + 中文自动探测，确保既不崩也能正常显示。
+// 把 sentences / user_sentences 真实表行归一化成 PhraseCard / SentenceDetailView 期望的结构。
 export function normalizeSentence(raw) {
   if (!raw || typeof raw !== 'object') return null
-  const thai = raw.text ?? raw.thai ?? raw.content ?? raw.word ?? ''
+  const thai = raw.sentence_th ?? raw.text ?? raw.thai ?? raw.content ?? raw.word ?? ''
   const category = raw.category ?? raw.type ?? raw.tag ?? null
 
   let segmented = raw.segmented
@@ -48,10 +49,10 @@ export function normalizeSentence(raw) {
   const source = raw.source ?? ''
   const difficulty = raw.difficulty ?? 1
 
-  // 中文兜底：优先实际/字面意义，未知 schema 时自动探测含中文字段
+  // 中文兜底：优先实际/字面意义，其次 user_sentences 的 sentence_zh，未知 schema 时自动探测含中文字段
   const zh =
-    actual || literal ||
-    pickChinese(raw, ['thai', 'text', 'content', 'word', 'romanization', 'segmented']) || ''
+    actual || literal || raw.sentence_zh ||
+    pickChinese(raw, ['thai', 'text', 'content', 'word', 'sentence_th', 'romanization', 'segmented']) || ''
 
   const id = raw.id != null ? raw.id : (thai || Math.random().toString(36).slice(2))
   return {
@@ -84,15 +85,13 @@ export async function getSentencesByCategory(category, userId) {
     return filtered.map((s) => normalizeSentence(s)).filter(Boolean)
   }
   if (!supabase) return []
-  const buildQ = (tbl) => {
-    const q = supabase.from(tbl).select('*')
-    if (category) q.eq('category', category)
-    return q
-  }
+  // 全局 sentences 表带 category 列，可按分类过滤；user_sentences 真实表无 category 列，不按分类过滤。
+  const gQ = supabase.from('sentences').select('*')
+  if (category) gQ.eq('category', category)
   const [g, u] = await Promise.all([
-    safeQuery(buildQ('sentences')),
+    safeQuery(gQ),
     userId
-      ? safeQuery(buildQ('user_sentences').eq('submitted_by', userId))
+      ? safeQuery(supabase.from('user_sentences').select('*').eq('submitter_id', userId))
       : Promise.resolve({ data: [] }),
   ])
   if (g.error) console.error('[getSentencesByCategory]', g.error.message)
@@ -123,27 +122,27 @@ export async function getSentenceById(id, userId) {
         .from('user_sentences')
         .select('*')
         .eq('id', id)
-        .eq('submitted_by', userId)
+        .eq('submitter_id', userId)
         .maybeSingle()
     )
-    if (ud) return normalizeSentence(ud)
+    if (ud) return normalizeSentence({ ...ud, origin: 'user' })
   }
   return null
 }
 
-// 读取当前用户新增的句子列表（real：user_sentences 按 submitted_by；mock：localStorage 集合）
+// 读取当前用户新增的句子列表（real：user_sentences 按 submitter_id；mock：localStorage 集合）
 export async function getUserSentencesList(userId) {
   if (!isSupabaseConfigured) return getUserSentences(userId)
   if (!supabase || !userId) return []
   const { data } = await safeQuery(
-    supabase.from('user_sentences').select('*').eq('submitted_by', userId)
+    supabase.from('user_sentences').select('*').eq('submitter_id', userId)
   )
   return data || []
 }
 
-// 新增用户句子（写入 user_sentences，带 submitted_by；与 sentences 同结构字段）
+// 新增用户句子（写入 user_sentences，真实列：submitter_id / sentence_th / sentence_zh / related_words）
 export async function addUserSentence(userId, sentence) {
-  if (!sentence || !sentence.thai) return null
+  if (!sentence || !(sentence.thai || sentence.sentence_th)) return null
   if (!isSupabaseConfigured) {
     const list = getUserSentences(userId)
     const row = { ...sentence, id: `u_${Date.now()}`, submitted_by: userId, origin: 'user' }
@@ -153,7 +152,18 @@ export async function addUserSentence(userId, sentence) {
   }
   if (!supabase || !userId) return null
   const { data, error } = await safeQuery(
-    supabase.from('user_sentences').insert({ ...sentence, submitted_by: userId }).select().single()
+    supabase
+      .from('user_sentences')
+      .insert({
+        submitter_id: userId,
+        sentence_th: sentence.thai || sentence.sentence_th || '',
+        sentence_zh: sentence.zh || sentence.sentence_zh || '',
+        related_words: sentence.related_words || asArray(sentence.relatedWords) || [],
+        source: sentence.source || 'user',
+        status: sentence.status || 'pending',
+      })
+      .select()
+      .single()
   )
   if (error) {
     console.error('[addUserSentence]', error.message)
@@ -183,6 +193,25 @@ export async function getSentenceBookmarks(userId) {
   )
   return data || []
 }
+// 收藏句子时，同步进默认「我的收藏」句子夹，使「单词本 → 句子夹」中可见。
+async function ensureInDefaultSentenceFolder(userId, sentenceId) {
+  try {
+    const { data: favRows } = await safeQuery(
+      supabase
+        .from('user_folders')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('folder_type', 'sentence')
+        .eq('name', '我的收藏')
+    )
+    let fav = favRows && favRows[0]
+    if (!fav) fav = await createFolder(userId, '我的收藏', '#D36B58', 'sentence')
+    if (fav && fav.id) await addSentenceToFolder(fav.id, sentenceId)
+  } catch (e) {
+    console.error('[ensureInDefaultSentenceFolder]', e?.message || e)
+  }
+}
+
 export async function bookmarkSentence(userId, sentenceId) {
   if (!isSupabaseConfigured) {
     const list = mockBookmarks(userId)
@@ -196,6 +225,8 @@ export async function bookmarkSentence(userId, sentenceId) {
   await safeQuery(
     supabase.from('user_sentence_bookmarks').upsert({ user_id: userId, sentence_id: sentenceId })
   )
+  // 同步进默认句子夹，让收藏出现在「单词本 → 句子夹」
+  await ensureInDefaultSentenceFolder(userId, sentenceId)
   return getSentenceBookmarks(userId)
 }
 export async function isSentenceBookmarked(userId, sentenceId) {

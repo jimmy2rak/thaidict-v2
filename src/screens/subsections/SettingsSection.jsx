@@ -14,10 +14,6 @@ const FONT_SIZES = [
   { v: 'medium', l: '中' },
   { v: 'large', l: '大' },
 ]
-const DIRS = [
-  { v: 'th_to_zh', l: '泰 → 中' },
-  { v: 'zh_to_th', l: '中 → 泰' },
-]
 
 export default function SettingsSection({ onClose }) {
   const app = useApp()
@@ -25,25 +21,23 @@ export default function SettingsSection({ onClose }) {
   const [loading, setLoading] = useState(true)
   const [rate, setRate] = useState(1.0)
   const [fontSize, setFontSize] = useState('medium')
-  const [dir, setDir] = useState('th_to_zh')
-  const [chineseFont, setChineseFontLocal] = useState('noto_sans_sc')
-  const [thaiFont, setThaiFontLocal] = useState('noto_sans_thai')
+  const [chineseFont, setChineseFontLocal] = useState('noto_serif_sc')
+  const [thaiFont, setThaiFontLocal] = useState('sarabun')
 
   useEffect(() => {
     if (!userId) return setLoading(false)
     getUserSettings(userId).then((s) => {
       setRate(s.speech_rate ?? 1.0)
       setFontSize(s.font_size || 'medium')
-      setDir(s.dict_direction || 'th_to_zh')
-      setChineseFontLocal(s.chinese_font || 'noto_sans_sc')
-      setThaiFontLocal(s.thai_font || 'noto_sans_thai')
+      setChineseFontLocal(s.chinese_font || 'noto_serif_sc')
+      setThaiFontLocal(s.thai_font || 'sarabun')
       setLoading(false)
     })
   }, [userId])
 
   const save = async (patch) => {
     if (!userId) return
-    const cur = { speech_rate: rate, font_size: fontSize, dict_direction: dir, ...patch }
+    const cur = { speech_rate: rate, font_size: fontSize, ...patch }
     await saveUserSettings(userId, cur)
     toast('设置已保存')
   }
@@ -94,11 +88,6 @@ export default function SettingsSection({ onClose }) {
               save({ thai_font: v })
             }}
           />
-        </Card>
-
-        <Card style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 13, color: 'var(--c-p600)', marginBottom: 8 }}>翻译方向</div>
-          <Seg options={DIRS} value={dir} onChange={(v) => { setDir(v); save({ dict_direction: v }) }} />
         </Card>
 
         <Card style={{ marginBottom: 12 }}>

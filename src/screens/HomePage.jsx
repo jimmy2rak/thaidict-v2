@@ -278,8 +278,8 @@ function DailySentenceCard({ sentence, onRefresh, onOpen, refreshing, userId }) 
   }
 
   return (
-    <Card style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, padding: '0 2px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <BowlLine size={22} color="var(--c-primary)" style={{ opacity: 0.7 }} />
           <Badge color="var(--c-gold)">每日一句</Badge>
@@ -293,9 +293,9 @@ function DailySentenceCard({ sentence, onRefresh, onOpen, refreshing, userId }) 
         onOpen={onOpen}
         onBookmark={toggleBookmark}
         bookmarked={bookmarked}
-        style={{ border: 'none', boxShadow: 'none', padding: 0 }}
+        showCategory
       />
-    </Card>
+    </div>
   )
 }
 

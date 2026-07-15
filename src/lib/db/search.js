@@ -54,39 +54,25 @@ export async function searchWords(query) {
   if (!supabase || !query) return []
   const q = query.trim()
   const lc = q.toLowerCase()
-  // 优先走统一视图 dictionary_full_ext（dictionary_full ∪ community_words）。
-  // 若该视图尚未创建（未跑 03 迁移），自动回退到「dictionary_full + community_words」双查询。
-  const ext = await safeQuery(
-    supabase
-      .from('dictionary_full_ext')
-      .select('*')
-      .or(`word.eq.${q},word.ilike.%${lc}%,senses::text.ilike.%${lc}%`)
-      .limit(40)
-  )
-  if (!ext.error && ext.data) {
-    return ext.data.map((r) =>
-      r.origin === 'community' ? transformCommunityWord(r) : transformWordData(r)
-    )
-  }
-  // —— 回退路径 ——
-  const [exact, fuzzy, zh, comm] = await Promise.all([
-    safeQuery(supabase.from('dictionary_full').select('*').eq('word', q).limit(5)),
-    safeQuery(supabase.from('dictionary_full').select('*').ilike('word', `%${lc}%`).limit(20)),
-    safeQuery(supabase.rpc('search_words_zh', { search_term: q, max_results: 20 })),
-    safeQuery(
-      supabase
-        .from('community_words')
-        .select('*')
-        .or(`word.ilike.%${lc}%,senses::text.ilike.%${lc}%`)
-        .limit(20)
-    ),
+  const isZh = /[一-鿿]/.test(q)
+  // dictionary_full_ext = dictionary_full ∪ community_words，一次覆盖主词典与社区词。
+  // 注意：不使用 or() + senses::text 强转 jsonb 列——PostgREST 会解析失败返回 400。
+  // 改用 eq + ilike 分别查询，中文释义检索走 search_words_zh RPC。
+  const [exact, fuzzy] = await Promise.all([
+    safeQuery(supabase.from('dictionary_full_ext').select('*').eq('word', q).limit(5)),
+    safeQuery(supabase.from('dictionary_full_ext').select('*').ilike('word', `%${lc}%`).limit(40)),
   ])
-  const rows = [
+  let rows = [
     ...(exact.data || []),
-    ...(fuzzy.data || []).filter((r) => r.word.toLowerCase() !== lc),
-    ...(zh.data || []),
-    ...(comm.data || []),
+    ...(fuzzy.data || []).filter((r) => (r.word || '').toLowerCase() !== lc),
   ]
+  // 中文释义检索：仅当输入含中文且泰文未命中时，走 RPC（视图内已对 senses jsonb 做 ilike）
+  if (isZh && rows.length === 0) {
+    const zh = await safeQuery(
+      supabase.rpc('search_words_zh', { search_term: q, max_results: 40 })
+    )
+    if (zh.data && zh.data.length) rows = zh.data
+  }
   const seen = new Set()
   const merged = []
   for (const r of rows) {
@@ -94,7 +80,7 @@ export async function searchWords(query) {
     seen.add(r.word)
     merged.push(r)
   }
-  return merged.map((r) => (r.source === 'community' ? transformCommunityWord(r) : transformWordData(r)))
+  return merged.map((r) => (r.origin === 'community' ? transformCommunityWord(r) : transformWordData(r)))
 }
 
 export async function getWordByThai(word) {
@@ -147,7 +133,7 @@ export async function searchCommunityWords(query) {
     supabase
       .from('community_words')
       .select('*')
-      .or(`word.ilike.%${query}%,senses::text.ilike.%${query}%`)
+      .ilike('word', `%${query}%`)
       .limit(20)
   )
   return (data || []).map(transformCommunityWord)
