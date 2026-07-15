@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { getServerSupabase } from '@/lib/supabaseServer'
 
 export const runtime = 'nodejs'
+// Vercel 函数超时上限（Hobby 计划上限 60s，Pro 可到 300s）。
+// 大模型推理可能耗时较长，必须抬高，否则函数被平台 kill → Cloudflare 502。
+export const maxDuration = 60
 
 const AI_KEY = 'SYSTEM_AI_API_KEY'
 const AI_BASE_URL = 'SYSTEM_AI_BASE_URL'
@@ -15,7 +18,15 @@ const PROVIDER_DEFAULTS = {
   custom: { baseUrl: '', defaultModel: '' },
 }
 
-// 安全解析：先取文本，再尝试 JSON，失败则保留文本（常用于上游返回 HTML 错误页）
+// 给 promise 加超时，避免 Supabase 冷启动连接偶发挂起导致函数被平台 kill
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(label + ' 超时（>' + ms + 'ms）')), ms)),
+  ])
+}
+
+// 安全解析：先取文本，再尝试 JSON，失败则保留文本
 async function safeParse(res) {
   const text = await res.text()
   try {
@@ -56,10 +67,11 @@ export async function POST(req) {
     } else {
       let rows
       try {
-        const { data, error } = await supabase
-          .from('system_config')
-          .select('key, value')
-          .in('key', ALL_KEYS)
+        const { data, error } = await withTimeout(
+          supabase.from('system_config').select('key, value').in('key', ALL_KEYS),
+          10000,
+          '读取 system_config'
+        )
         if (error) {
           console.error('[api/ai] read system_config error:', error.message)
           return NextResponse.json({ error: '读取系统 AI 配置失败：' + error.message }, { status: 500 })
@@ -101,6 +113,8 @@ export async function POST(req) {
       temperature: 0.7,
     }
 
+    const ac = new AbortController()
+    const timer = setTimeout(() => ac.abort(), 55000) // 略低于 maxDuration，主动超时返回 JSON
     let res
     try {
       res = await fetch(url, {
@@ -110,11 +124,17 @@ export async function POST(req) {
           Authorization: `Bearer ${config.apiKey}`,
         },
         body: JSON.stringify(payload),
+        signal: ac.signal,
       })
     } catch (e) {
+      clearTimeout(timer)
       console.error('[api/ai] fetch upstream error:', e)
+      if (e.name === 'AbortError') {
+        return NextResponse.json({ error: 'AI 服务响应超时（>55s），请稍后重试或更换模型' }, { status: 504 })
+      }
       return NextResponse.json({ error: 'AI 服务网络异常：' + e.message }, { status: 502 })
     }
+    clearTimeout(timer)
 
     const { json, text } = await safeParse(res)
     if (!res.ok) {
