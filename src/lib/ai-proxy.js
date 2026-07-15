@@ -30,10 +30,11 @@ export function buildWordPrompt(word, zhHint = '') {
    - pos：词性（名词/动词/形容词/副词/介词/连词/代词/量词/助词/叹词/其他）
    - meaning：简洁准确的中文释义
    - register：语体（正式/口语/书面/俚语/通用）
-   - examples：该义项的 2 个例句，每句含：
+   - examples：该义项的 2 个例句，每句必须含：
      - th（泰语原文）
      - zh（中文翻译）
-     - segmented：对 th 的分词结果，数组；每个元素含 text（泰语）、pos（词性）、meaning（中文）
+     - segmented（对 th 的分词结果，【必须】提供；数组，每个元素含 text（泰语）、pos（词性）、meaning（中文））
+   - 分词必须拆到词典级词汇粒度，不要把长复合短语当作一个词，例如 "เขาสารภาพโทษ" 必须拆成 [เขา, สารภาพ, โทษ]。
 4. synonyms：近义词数组，每项含 word（泰语）和 zh（中文）。
 5. antonyms：反义词数组，每项含 word（泰语）和 zh（中文）。
 6. learner_associations：学习者联想词，2-3 个，每项含 word（泰语）和 note（中文备注）。

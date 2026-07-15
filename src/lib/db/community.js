@@ -2,12 +2,15 @@
 import { isSupabaseConfigured, supabase } from '../supabase.js'
 import { safeQuery } from '../utils.js'
 import { getGlobal, setGlobal } from '../mock/store.js'
+import { fillSensesSegments } from '../segmentExamples.js'
 
 export async function saveCommunityWord(entry, userId, zhHint) {
+  // 确保例句都有 segmented（AI 可能漏给，服务端兜底补全）
+  const senses = await fillSensesSegments(entry.senses)
   if (!isSupabaseConfigured) {
     const list = getGlobal('community_words', [])
     const i = list.findIndex((w) => w.word.toLowerCase() === (entry.word || '').toLowerCase())
-    const row = { ...entry, submitted_by: userId || null, zh_hint: zhHint || '', updated_at: new Date().toISOString() }
+    const row = { ...entry, senses, submitted_by: userId || null, zh_hint: zhHint || '', updated_at: new Date().toISOString() }
     if (i >= 0) list[i] = row
     else list.push(row)
     setGlobal('community_words', list)
@@ -20,7 +23,7 @@ export async function saveCommunityWord(entry, userId, zhHint) {
   const row = {
     word: (entry.word || '').toLowerCase(),
     romanization: entry.romanization || '',
-    senses: entry.senses || [],
+    senses,
     synonyms: entry.synonyms || [],
     antonyms: entry.antonyms || [],
     learner_associations: entry.learner_associations || [],

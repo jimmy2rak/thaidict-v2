@@ -1,7 +1,8 @@
 // 搜索 / 词典查询。mock 走 localStorage（store.js）；real 走 Supabase + RPC。
 import { isSupabaseConfigured, supabase } from '../supabase.js'
 import { transformWordData, transformCommunityWord, safeQuery } from '../utils.js'
-import { getGlobal } from '../mock/store.js'
+import { getGlobal, setGlobal } from '../mock/store.js'
+import { fillSensesSegments } from '../segmentExamples.js'
 
 // ---------- mock ----------
 function mockSearch(query) {
@@ -187,7 +188,9 @@ export async function getWordMeanings(word) {
 // mock 写入 dictionary 全局集合；real 写入 dictionary 表。
 export async function addDictionaryWord(entry) {
   if (!entry || !entry.word) return null
-  const row = normalizeDictionaryRow(entry)
+  // 确保例句都有 segmented（AI 可能漏给，服务端兜底补全）
+  const senses = await fillSensesSegments(entry.senses)
+  const row = normalizeDictionaryRow({ ...entry, senses })
   if (!isSupabaseConfigured) {
     const dict = getGlobal('dictionary', [])
     const idx = dict.findIndex((r) => r.word === row.word)
