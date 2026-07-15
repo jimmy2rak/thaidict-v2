@@ -108,21 +108,11 @@ export async function POST(req) {
     const url = `${config.baseUrl}/chat/completions`
     console.log('[api/ai] 请求上游:', url, 'model=', config.model)
 
-    // 探针：以 __PROBE__ 开头的 prompt 不真正调用大模型，仅确认函数能跑完（定位 502 根因）
-    if (typeof prompt === 'string' && prompt.startsWith('__PROBE__')) {
-      return NextResponse.json({
-        probe: true,
-        hasKey: !!config.apiKey,
-        baseUrl: config.baseUrl,
-        model: config.model,
-        userApi: !!userApi,
-      })
-    }
-
     const payload = {
       model: config.model,
       messages: [{ role: 'user', content: typeof prompt === 'string' ? prompt : JSON.stringify(prompt) }],
       temperature: 0.7,
+      max_tokens: 800, // 限制输出长度，缩短大模型推理耗时，避免超过 Vercel 函数超时
     }
 
     const ac = new AbortController()
