@@ -9,7 +9,12 @@ const SYSTEM_AI_CONFIG_KEY = process.env.SYSTEM_AI_CONFIG_KEY || 'ai_system_api'
 
 function readKey(raw) {
   const v = typeof raw === 'string' ? { api_key: raw } : raw || {}
-  return v.api_key || v.apiKey || v.key || ''
+  return v.api_key || v.apiKey || v.key || v.token || v.apiToken || v.secret || v.api_secret || ''
+}
+
+function detectKeyFields(raw) {
+  const v = typeof raw === 'string' ? {} : raw || {}
+  return Object.keys(v).filter((k) => /key|token|secret|api/i.test(k))
 }
 
 function maskKey(key) {
@@ -36,12 +41,22 @@ export async function GET(req) {
 
   const v = data?.value || {}
   const apiKey = readKey(v)
+  const keyFields = detectKeyFields(data?.value)
   return NextResponse.json({
     provider: v.provider || 'openai',
-    base_url: v.base_url || v.baseUrl || '',
-    model: v.model || '',
+    base_url: v.base_url || v.baseUrl || v.endpoint || '',
+    model: v.model || v.modelId || '',
     keySet: !!apiKey,
     keyMasked: maskKey(apiKey),
+    configKey: SYSTEM_AI_CONFIG_KEY,
+    notFound: !data,
+    hint: data && !apiKey
+      ? (keyFields.length
+        ? `配置存在，但未识别出 api_key；已发现字段：${keyFields.join(', ')}`
+        : '配置存在，但缺少可识别的 api_key/token/secret 字段')
+      : !data
+        ? `未在 system_config 中找到 key="${SYSTEM_AI_CONFIG_KEY}" 的配置`
+        : '',
   })
 }
 

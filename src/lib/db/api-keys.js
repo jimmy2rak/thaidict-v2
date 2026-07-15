@@ -51,3 +51,25 @@ export async function deleteApiKey(userId, keyId) {
   await safeQuery(supabase.from('user_api_keys').delete().eq('id', keyId).eq('user_id', userId))
   return getApiKeys(userId)
 }
+
+// 返回用户当前选中的默认 API（从 user_settings.default_api_id -> user_api_keys）。
+// 未设置或密钥缺失则返回 null，调用方回退到 system_config 系统内置 API。
+export async function getActiveAiApi(userId) {
+  if (!userId) return null
+  const [{ getUserSettings }, keys] = await Promise.all([
+    import('./settings.js'),
+    getApiKeys(userId),
+  ])
+  const settings = await getUserSettings(userId)
+  const defaultId = settings?.default_api_id || null
+  if (!defaultId) return null
+  const k = keys.find((x) => x.id === defaultId)
+  if (!k || !k.key) return null
+  return {
+    key: k.key,
+    base_url: k.base_url || '',
+    model: k.model || '',
+    provider: k.provider || 'custom',
+    name: k.name || '',
+  }
+}

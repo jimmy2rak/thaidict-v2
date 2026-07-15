@@ -15,6 +15,7 @@ import {
   THAI_FONTS,
   getFontFamily,
   getUserRole,
+  getActiveAiApi,
 } from '../lib/db/index.js'
 import { callAiProxy } from '../lib/ai-proxy.js'
 import { transformWordData, transformCommunityWord } from '../lib/utils.js'
@@ -314,7 +315,8 @@ export function AppProvider({ children }) {
   // ---------- AI 生成词条（先进入待审批） ----------
   const handleGenerated = useCallback(
     async (word, zhHint) => {
-      const { data, error } = await callAiProxy({ word, zhHint })
+      const userApi = await getActiveAiApi(userId)
+      const { data, error } = await callAiProxy({ word, zhHint }, userApi)
       if (error || !data) {
         toast('生成失败，请重试')
         return

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Trash2, X, Sparkles, Flame, Plus, Check } from 'lucide-react'
+import { ArrowLeft, Trash2, X, Sparkles, Flame, Plus, Check, Loader2 } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
 import {
   getCheckinTasks, getCheckinCompletions, createCheckinTask, updateCheckinTask, deleteCheckinTask,
   getStreak,
+  getActiveAiApi,
 } from '../../lib/db/index.js'
+import { callAiProxy } from '../../lib/ai-proxy.js'
 import { getTodayCST, getCSTWeekday } from '../../lib/utils.js'
 import { TASK_TYPES, typeLabels } from '../../lib/taskTypes.js'
 import { IconButton, Card, Spinner, Badge } from '../../components/UIComponents.jsx'
@@ -39,6 +41,7 @@ export default function AdjustPlanSection({ onClose }) {
 
   // AI 推荐
   const [aiPreview, setAiPreview] = useState(null)
+  const [aiLoading, setAiLoading] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importText, setImportText] = useState('')
 
@@ -123,8 +126,41 @@ export default function AdjustPlanSection({ onClose }) {
   }
 
   // ---------- AI 推荐 ----------
-  const generateAI = () => {
-    setAiPreview(recommendedPlan())
+  const generateAI = async () => {
+    if (!userId) return toast('请先登录')
+    setAiLoading(true)
+    try {
+      const userApi = await getActiveAiApi(userId)
+      const current = tasks.map((t) => ({ name: t.name, task_types: t.task_types || [t.task_type], duration_minutes: t.duration_minutes, plan_days: t.plan_days }))
+      const prompt = `你是一位泰语学习规划师。请根据我的水平和时间，为我制定一份每日泰语打卡计划${current.length ? '，避免与现有任务重复' : ''}。每个计划项必须包含：name（任务名称）, task_types（学习类型数组，可选：word/grammar/reading/listening/speaking/writing 或自定义字符串）, duration_minutes（预计时长，数字）, plan_days（每周重复日，1=周一…7=周日，数组）。请直接返回 JSON 数组，不要多余解释。格式示例：[{"name":"背诵泰语单词","task_types":["word"],"duration_minutes":15,"plan_days":[1,2,3,4,5,6,7]}]${current.length ? '\n现有任务：' + JSON.stringify(current) : ''}`
+      const { data, error } = await callAiProxy(prompt, userApi)
+      if (error || !data) {
+        toast('AI 生成计划失败：' + (error || '未知错误'))
+        setAiLoading(false)
+        return
+      }
+      let plan
+      try {
+        plan = typeof data === 'string' ? JSON.parse(data) : data
+        if (!Array.isArray(plan)) plan = [plan]
+      } catch (e) {
+        toast('AI 返回格式无法解析')
+        console.error('[AI plan parse]', e)
+        setAiLoading(false)
+        return
+      }
+      setAiPreview(plan.map((r) => ({
+        name: r.name || '未命名任务',
+        task_types: Array.isArray(r.task_types) && r.task_types.length ? r.task_types : [r.task_type || 'word'],
+        duration_minutes: Number(r.duration_minutes) || 15,
+        plan_days: Array.isArray(r.plan_days) && r.plan_days.length ? r.plan_days : [1, 2, 3, 4, 5],
+      })))
+      toast('AI 推荐计划已生成')
+    } catch (e) {
+      console.error('[generateAI]', e)
+      toast('AI 生成计划失败')
+    }
+    setAiLoading(false)
   }
   const applyAI = async () => {
     if (!userId || !aiPreview) return
@@ -339,12 +375,14 @@ export default function AdjustPlanSection({ onClose }) {
             根据你的水平和时间，AI为你定制最优打卡计划
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <button onClick={generateAI} style={{
+            <button onClick={generateAI} disabled={aiLoading} style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               padding: '10px', borderRadius: 'var(--radius-sm)', border: 'none',
               background: 'var(--c-primary)', color: '#fff', fontSize: 13, fontWeight: 700,
+              opacity: aiLoading ? 0.7 : 1,
             }}>
-              <Sparkles size={14} /> AI生成计划
+              {aiLoading ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+              {aiLoading ? '生成中…' : 'AI生成计划'}
             </button>
             <button onClick={() => setImportOpen((o) => !o)} style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,

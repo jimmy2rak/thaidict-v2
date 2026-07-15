@@ -194,8 +194,9 @@ export default function ApiKeysSection({ onClose }) {
             {systemAi.base_url ? <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 6, wordBreak: 'break-all' }}>{systemAi.base_url}</div> : null}
             <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
               <ShieldCheck size={13} color={systemAi.keySet ? 'var(--c-teal)' : 'var(--c-s500)'} />
-              {systemAi.keySet ? `已配置 · ${systemAi.keyMasked}` : '未配置密钥'}
+              {systemAi.keySet ? `已配置 · ${systemAi.keyMasked}` : (systemAi.hint || '未配置密钥')}
             </div>
+            {systemAi.hint && <div style={{ fontSize: 11, color: 'var(--c-rose)', marginTop: 6, lineHeight: 1.45 }}>{systemAi.hint}</div>}
             {!canEditSystem && <div style={{ fontSize: 11, color: 'var(--c-p500)', marginTop: 6 }}>仅超级管理员或被授权管理员可编辑</div>}
           </Card>
         )}

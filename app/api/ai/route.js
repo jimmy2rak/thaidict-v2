@@ -21,7 +21,7 @@ function resolveConfig(raw) {
   const defaults = PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.openai
   return {
     provider,
-    apiKey: v.api_key || v.apiKey || v.key || '',
+    apiKey: v.api_key || v.apiKey || v.key || v.token || v.apiToken || v.secret || v.api_secret || '',
     baseUrl: v.base_url || v.baseUrl || v.endpoint || defaults.baseUrl,
     model: v.model || v.modelId || defaults.defaultModel,
   }
