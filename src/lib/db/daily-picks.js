@@ -17,12 +17,21 @@ export async function loadDailyPick() {
   }
   if (!supabase) return { word: null, sentence: null }
 
-  // 兜底：直接 RPC 随机取
+  // 兜底：优先 RPC；RPC 不存在/失败时直接查表随机取（兼容 02 未建 RPC 的库）
   const fetchRandomWord = async () => {
-    const { data } = await safeQuery(supabase.rpc('get_random_word'))
-    return data || null
+    const { data: rpcData } = await safeQuery(supabase.rpc('get_random_word'))
+    if (rpcData) return rpcData
+    const { data } = await safeQuery(
+      supabase.from('dictionary_full').select('*').eq('enrichment_status', 'enriched').limit(1)
+    )
+    return data?.[0] || null
   }
-  const fetchRandomSentence = async () => getDailySentence()
+  const fetchRandomSentence = async () => {
+    const { data: rpcData } = await safeQuery(supabase.rpc('get_random_sentence'))
+    if (rpcData) return normalizeSentence(rpcData)
+    const { data } = await safeQuery(supabase.from('sentences').select('*').limit(1))
+    return data?.[0] ? normalizeSentence(data[0]) : null
+  }
 
   const { data: pick } = await safeQuery(supabase.from('daily_picks').select('*').maybeSingle())
   if (!pick) {
@@ -75,9 +84,23 @@ export async function refreshDailyPick(type = 'both') {
   }
 
   // 回退：前端随机取，并尝试回写 daily_picks（有写权限则持久化，无则仅本次展示）
+  const fetchRandomWord = async () => {
+    const { data: rpcData } = await safeQuery(supabase.rpc('get_random_word'))
+    if (rpcData) return rpcData
+    const { data } = await safeQuery(
+      supabase.from('dictionary_full').select('*').eq('enrichment_status', 'enriched').limit(1)
+    )
+    return data?.[0] || null
+  }
+  const fetchRandomSentence = async () => {
+    const s = await getDailySentence()
+    if (s) return s
+    const { data } = await safeQuery(supabase.from('sentences').select('*').limit(1))
+    return data?.[0] ? normalizeSentence(data[0]) : null
+  }
   const [word, sentence] = await Promise.all([
-    (type === 'word' || type === 'both') ? safeQuery(supabase.rpc('get_random_word')).then((r) => r.data) : null,
-    (type === 'sentence' || type === 'both') ? getDailySentence() : null,
+    (type === 'word' || type === 'both') ? fetchRandomWord() : null,
+    (type === 'sentence' || type === 'both') ? fetchRandomSentence() : null,
   ])
   const current = await safeQuery(supabase.from('daily_picks').select('*').maybeSingle())
   const upsertData = {
