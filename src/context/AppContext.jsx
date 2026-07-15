@@ -79,24 +79,46 @@ export function AppProvider({ children }) {
       //  - PKCE 流（OAuth）：回调 URL 形如 ?code=...
       const handleAuthCallback = async () => {
         const hash = window.location.hash
-        const hasToken =
+        const search = new URLSearchParams(window.location.search)
+        const code = search.get('code')
+        const hasHashToken =
           hash.includes('access_token=') ||
           hash.includes('type=magiclink') ||
           hash.includes('type=recovery') ||
-          hash.includes('type=signup') ||
-          hash.includes('error=')
-        const code = new URLSearchParams(window.location.search).get('code')
+          hash.includes('type=signup')
+        const hasError = hash.includes('error=') || !!search.get('error')
 
-        if (hasToken || code) {
-          const { data, error } = await supabase.auth.getSessionFromUrl()
-          if (error) console.error('[auth callback]', error)
-          if (data?.session) {
-            setSession(data.session)
-            // 清掉 URL 中的 token，避免刷新时重复处理
-            window.history.replaceState({}, '', window.location.pathname + window.location.search)
+        try {
+          // PKCE 流（OAuth：Google/GitHub，以及 PKCE magic link）：回调 URL 形如 ?code=...
+          if (code) {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+            if (error) console.error('[auth callback pkce]', error)
+            if (data?.session) setSession(data.session)
+            window.history.replaceState({}, '', window.location.pathname)
+            setLoading(false)
+            return
           }
-          setLoading(false)
-          return
+          // 隐式流：回调 URL 形如 #access_token=...&refresh_token=...
+          if (hasHashToken) {
+            const hp = new URLSearchParams(hash.replace(/^#/, ''))
+            const access_token = hp.get('access_token')
+            const refresh_token = hp.get('refresh_token')
+            if (access_token && refresh_token) {
+              const { data, error } = await supabase.auth.setSession({ access_token, refresh_token })
+              if (error) console.error('[auth callback implicit]', error)
+              if (data?.session) setSession(data.session)
+            }
+            window.history.replaceState({}, '', window.location.pathname)
+            setLoading(false)
+            return
+          }
+          // 回调携带错误：清掉 URL 参数，避免刷新时反复处理
+          if (hasError) {
+            console.error('[auth callback error]', hash || window.location.search)
+            window.history.replaceState({}, '', window.location.pathname)
+          }
+        } catch (e) {
+          console.error('[auth callback]', e)
         }
 
         const { data } = await supabase.auth.getSession()
