@@ -13,6 +13,7 @@ export const PERMISSION_OPTIONS = [
   { key: 'approve_entries', label: '审批 AI 词条/句子入库' },
   { key: 'manage_users', label: '管理用户权限' },
   { key: 'manage_settings', label: '管理系统设置' },
+  { key: 'manage_system_ai', label: '管理系统内置 AI API' },
   { key: 'view_stats', label: '查看全站统计' },
 ]
 
