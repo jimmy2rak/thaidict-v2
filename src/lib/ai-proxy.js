@@ -1,5 +1,6 @@
-// AI 代理分发：mock 模式走规则生成；真实模式走 Supabase Edge Function `ai-proxy`。
-import { isSupabaseConfigured, supabase } from './supabase.js'
+// AI 代理分发：mock 模式走规则生成；真实模式走 Next.js Route Handler /api/ai。
+// system_config 中的系统默认 AI 密钥由服务端读取，前端不接触。
+import { isSupabaseConfigured } from './supabase.js'
 import { generateMockWord, parsePrompt } from './mock/aiProxy.js'
 
 export async function callAiProxy(prompt, userApi = null) {
@@ -11,23 +12,18 @@ export async function callAiProxy(prompt, userApi = null) {
   }
 
   try {
-    const fnUrl = `${supabase.supabaseUrl}/functions/v1/ai-proxy`
-    const { data: { session } } = await supabase.auth.getSession()
-    const body = typeof prompt === 'string' ? { prompt } : { prompt: JSON.stringify(prompt) }
+    const body = { prompt }
     if (userApi?.key) {
-      body.user_api_key = userApi.key
-      body.user_base_url = userApi.base_url
-      body.user_model = userApi.model
-      body.provider = 'user'
-    } else {
-      body.provider = 'system'
+      body.userApi = {
+        key: userApi.key,
+        base_url: userApi.base_url,
+        model: userApi.model,
+        provider: userApi.provider || 'custom',
+      }
     }
-    const res = await fetch(fnUrl, {
+    const res = await fetch('/api/ai', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
     const json = await res.json()
