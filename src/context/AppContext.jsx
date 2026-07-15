@@ -205,30 +205,70 @@ export function AppProvider({ children }) {
   }, [chineseFont, thaiFont])
 
   // 加载分词词典（词典公开可读，登录前后都加载，保证未登录时首页/每日推荐也能正确分词）
+  // 优化：限制拉取词量上限(DICT_CAP) + 并发分页（不再 6 万词串行）+ localStorage 缓存，
+  //       避免旧实现「62k 词串行拉取」导致例句分词要等很久才分好。
+  const DICT_CAP = 12000
+  const DICT_CACHE_KEY = 'thai_dict_cache_v1'
+  const DICT_CACHE_TTL = 24 * 3600 * 1000
+  const readDictCache = () => {
+    try {
+      const raw = localStorage.getItem(DICT_CACHE_KEY)
+      if (raw) {
+        const obj = JSON.parse(raw)
+        if (obj && Array.isArray(obj.words) && Date.now() - obj.ts < DICT_CACHE_TTL) return obj.words
+      }
+    } catch {
+      /* ignore */
+    }
+    return null
+  }
+  const writeDictCache = (words) => {
+    try {
+      localStorage.setItem(DICT_CACHE_KEY, JSON.stringify({ ts: Date.now(), words }))
+    } catch {
+      /* ignore */
+    }
+  }
   useEffect(() => {
     let cancelled = false
+    const apply = (words) => {
+      if (cancelled) return
+      setSegmentDict(words)
+      setTokenDict(words)
+    }
     const load = async () => {
-      if (isSupabaseConfigured) {
-        const words = new Set()
-        let from = 0
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { data } = await supabase.from('dictionary_full').select('word').range(from, from + 999)
-          if (!data || data.length === 0) break
-          data.forEach((r) => words.add(r.word))
-          if (data.length < 1000) break
-          from += 1000
-        }
-        if (!cancelled) {
-          setSegmentDict([...words])
-          setTokenDict([...words])
-        }
-      } else {
+      if (!isSupabaseConfigured) {
         const dict = getGlobal('dictionary', [])
-        if (!cancelled) {
-          setSegmentDict(dict.map((r) => r.word))
-          setTokenDict(dict.map((r) => r.word))
+        apply(dict.map((r) => r.word))
+        return
+      }
+      // 1) 命中本地缓存 → 秒回，无需网络
+      const cached = readDictCache()
+      if (cached && cached.length) {
+        apply(cached)
+        return
+      }
+      // 2) 并发分页拉取（上限 DICT_CAP，约 12 个请求而非 62 个串行）
+      try {
+        const pages = Math.ceil(DICT_CAP / 1000)
+        const results = await Promise.allSettled(
+          Array.from({ length: pages }, (_, p) =>
+            supabase.from('dictionary_full').select('word').range(p * 1000, p * 1000 + 999)
+          )
+        )
+        const words = []
+        for (const res of results) {
+          if (res.status === 'fulfilled' && res.value?.data) {
+            for (const r of res.value.data) if (r.word) words.push(r.word)
+          }
         }
+        const capped = words.slice(0, DICT_CAP)
+        if (capped.length) {
+          writeDictCache(capped)
+          apply(capped)
+        }
+      } catch (e) {
+        console.warn('[AppContext] 词典加载失败，降级基础词库', e)
       }
     }
     load()

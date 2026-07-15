@@ -13,27 +13,24 @@ async function loadDictOnce() {
     setDictWords([])
     return
   }
-  const words = new Set()
-  let from = 0
-  const PAGE = 1000
-  while (true) {
-    const { data, error } = await supabase
-      .from('dictionary_full')
-      .select('word')
-      .range(from, from + PAGE - 1)
-    if (error) {
-      console.error('[thaiSegmentServer] 拉取词典失败', error.message)
-      break
+  // 并发分页拉取，限制上限（避免 6 万词串行导致冷启动超时）
+  const CAP = 20000
+  const pages = Math.ceil(CAP / 1000)
+  try {
+    const results = await Promise.all(
+      Array.from({ length: pages }, (_, p) =>
+        supabase.from('dictionary_full').select('word').range(p * 1000, p * 1000 + 999)
+      )
+    )
+    const words = []
+    for (const { data } of results) {
+      if (data && data.length) for (const r of data) if (r.word) words.push(r.word)
     }
-    if (!data || data.length === 0) break
-    data.forEach((r) => {
-      if (r.word && typeof r.word === 'string') words.add(r.word)
-    })
-    if (data.length < PAGE) break
-    from += PAGE
+    setDictWords(words.slice(0, CAP))
+    console.log('[thaiSegmentServer] 词典加载完成，共', Math.min(words.length, CAP), '词')
+  } catch (e) {
+    console.error('[thaiSegmentServer] 拉取词典失败', e)
   }
-  setDictWords([...words])
-  console.log('[thaiSegmentServer] 词典加载完成，共', words.size, '词')
 }
 
 async function ensureDict() {

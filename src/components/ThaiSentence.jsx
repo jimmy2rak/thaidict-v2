@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useSyncExternalStore } from 'react'
-import { getTokens, getDictVersion, subscribeDictVersion } from '../utils/thaiToken'
+import React, { useEffect, useState, useCallback, useRef, useSyncExternalStore } from 'react'
+import { getTokens, getDictVersion, subscribeDictVersion, cacheTokens } from '../utils/thaiToken'
 import { getWordMeanings } from '../lib/db/search.js'
 import WordBubble from './WordBubble.jsx'
 
@@ -43,6 +43,7 @@ export default function ThaiSentence({
   const [tokens, setTokens] = useState([])
   const [loading, setLoading] = useState(type !== 'word')
   const [bubble, setBubble] = useState(null) // { word, x, y, status, meanings }
+  const triedServerRef = useRef('') // 已尝试服务端兜底过的文本，避免重复请求
   // 订阅字典版本：真实词库加载后自动重跑分词（避免缓存住「字典未加载」时的错误结果）
   const dictVersion = useSyncExternalStore(
     subscribeDictVersion,
@@ -70,6 +71,27 @@ export default function ThaiSentence({
         if (cancelled) return
         setTokens(toks)
         setLoading(false)
+        // 服务端兜底：客户端仍残留未切块(residual)时，用服务端完整词典再分一次，结果回写缓存
+        if (
+          toks.some((t) => t.type === 'residual') &&
+          triedServerRef.current !== text &&
+          text.trim().length > 2
+        ) {
+          triedServerRef.current = text
+          fetch('/api/thai-segment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text }),
+          })
+            .then((r) => r.json())
+            .then((j) => {
+              if (j && Array.isArray(j.data) && j.data.length) {
+                cacheTokens(text, j.data)
+                if (!cancelled) setTokens(j.data)
+              }
+            })
+            .catch(() => {})
+        }
       })
       .catch(() => {
         if (cancelled) return

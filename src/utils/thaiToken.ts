@@ -472,6 +472,12 @@ export function getTokens(text: string): Promise<Token[]> {
   return p
 }
 
+/** 手动写入某句的分词结果到永久缓存（供服务端兜底结果回写，避免重复请求） */
+export function cacheTokens(text: string, tokens: Token[]): void {
+  if (!text || !tokens || tokens.length === 0) return
+  setCache(text, tokens)
+}
+
 // 清空所有分词缓存（调试用）
 export function clearTokenCache(): void {
   try {
