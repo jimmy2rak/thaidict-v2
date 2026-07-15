@@ -3,28 +3,16 @@ import { getServerSupabase } from '@/lib/supabaseServer'
 
 export const runtime = 'nodejs'
 
-// system_config 中系统默认 AI API 配置对应的 key。
-// 用户可在 .env.local 覆盖；默认 'ai_system_api'。
-const SYSTEM_AI_CONFIG_KEY = process.env.SYSTEM_AI_CONFIG_KEY || 'ai_system_api'
+const AI_KEY = 'SYSTEM_AI_API_KEY'
+const AI_BASE_URL = 'SYSTEM_AI_BASE_URL'
+const AI_MODEL = 'SYSTEM_AI_MODEL'
+const ALL_KEYS = [AI_KEY, AI_BASE_URL, AI_MODEL]
 
 const PROVIDER_DEFAULTS = {
   openai: { baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o' },
   deepseek: { baseUrl: 'https://api.deepseek.com/v1', defaultModel: 'deepseek-chat' },
   gemini: { baseUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-pro' },
   custom: { baseUrl: '', defaultModel: '' },
-}
-
-function resolveConfig(raw) {
-  // 兼容 value 为纯字符串（直接是 key）或对象结构
-  const v = typeof raw === 'string' ? { api_key: raw } : raw || {}
-  const provider = v.provider || 'openai'
-  const defaults = PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.openai
-  return {
-    provider,
-    apiKey: v.api_key || v.apiKey || v.key || v.token || v.apiToken || v.secret || v.api_secret || '',
-    baseUrl: v.base_url || v.baseUrl || v.endpoint || defaults.baseUrl,
-    model: v.model || v.modelId || defaults.defaultModel,
-  }
 }
 
 export async function POST(req) {
@@ -54,20 +42,30 @@ export async function POST(req) {
   } else {
     const { data, error } = await supabase
       .from('system_config')
-      .select('value')
-      .eq('key', SYSTEM_AI_CONFIG_KEY)
-      .maybeSingle()
+      .select('key, value')
+      .in('key', ALL_KEYS)
     if (error) {
       console.error('[api/ai] read system_config error:', error.message)
       return NextResponse.json({ error: '读取系统 AI 配置失败' }, { status: 500 })
     }
-    if (!data || !data.value) {
+    const map = {}
+    for (const r of data || []) map[r.key] = r.value
+    const baseUrl = map[AI_BASE_URL] || ''
+    const model = map[AI_MODEL] || ''
+    const apiKey = map[AI_KEY] || ''
+
+    if (!apiKey || !baseUrl) {
       return NextResponse.json(
-        { error: `未找到系统默认 AI 配置（system_config.key=${SYSTEM_AI_CONFIG_KEY}）` },
+        { error: '未找到系统默认 AI 配置（system_config：SYSTEM_AI_API_KEY / SYSTEM_AI_BASE_URL）' },
         { status: 500 }
       )
     }
-    config = resolveConfig(data.value)
+    config = {
+      provider: 'openai',
+      apiKey,
+      baseUrl: baseUrl.replace(/\/$/, ''),
+      model: model || 'gpt-4o',
+    }
   }
 
   if (!config.apiKey) {

@@ -5,22 +5,28 @@ import { getCallerRoleRow, canManageSystemAi } from '@/lib/serverAdminAuth'
 
 export const runtime = 'nodejs'
 
-const SYSTEM_AI_CONFIG_KEY = process.env.SYSTEM_AI_CONFIG_KEY || 'ai_system_api'
-
-function readKey(raw) {
-  const v = typeof raw === 'string' ? { api_key: raw } : raw || {}
-  return v.api_key || v.apiKey || v.key || v.token || v.apiToken || v.secret || v.api_secret || ''
-}
-
-function detectKeyFields(raw) {
-  const v = typeof raw === 'string' ? {} : raw || {}
-  return Object.keys(v).filter((k) => /key|token|secret|api/i.test(k))
-}
+const AI_KEY = 'SYSTEM_AI_API_KEY'
+const AI_BASE_URL = 'SYSTEM_AI_BASE_URL'
+const AI_MODEL = 'SYSTEM_AI_MODEL'
+const ALL_KEYS = [AI_KEY, AI_BASE_URL, AI_MODEL]
 
 function maskKey(key) {
   if (!key) return ''
   if (key.length <= 4) return '••••'
   return key.slice(0, 4) + '••••••••' + key.slice(-4)
+}
+
+async function readRows(server) {
+  const { data, error } = await server
+    .from('system_config')
+    .select('key, value')
+    .in('key', ALL_KEYS)
+  if (error) throw error
+  const map = {}
+  for (const r of data || []) {
+    map[r.key] = r.value
+  }
+  return map
 }
 
 // GET /api/admin/system-ai —— 任意登录用户可读，密钥打码返回
@@ -33,31 +39,30 @@ export async function GET(req) {
   const server = getServerSupabase()
   if (!server) return NextResponse.json({ error: '服务端未配置 Supabase' }, { status: 500 })
 
-  const { data } = await server
-    .from('system_config')
-    .select('value')
-    .eq('key', SYSTEM_AI_CONFIG_KEY)
-    .maybeSingle()
+  try {
+    const map = await readRows(server)
+    const apiKey = map[AI_KEY] || ''
+    const baseUrl = map[AI_BASE_URL] || ''
+    const model = map[AI_MODEL] || ''
 
-  const v = data?.value || {}
-  const apiKey = readKey(v)
-  const keyFields = detectKeyFields(data?.value)
-  return NextResponse.json({
-    provider: v.provider || 'openai',
-    base_url: v.base_url || v.baseUrl || v.endpoint || '',
-    model: v.model || v.modelId || '',
-    keySet: !!apiKey,
-    keyMasked: maskKey(apiKey),
-    configKey: SYSTEM_AI_CONFIG_KEY,
-    notFound: !data,
-    hint: data && !apiKey
-      ? (keyFields.length
-        ? `配置存在，但未识别出 api_key；已发现字段：${keyFields.join(', ')}`
-        : '配置存在，但缺少可识别的 api_key/token/secret 字段')
-      : !data
-        ? `未在 system_config 中找到 key="${SYSTEM_AI_CONFIG_KEY}" 的配置`
-        : '',
-  })
+    return NextResponse.json({
+      provider: 'openai',
+      base_url: baseUrl,
+      model,
+      keySet: !!apiKey,
+      keyMasked: maskKey(apiKey),
+      configKeys: ALL_KEYS,
+      notFound: !map[AI_KEY] && !map[AI_BASE_URL] && !map[AI_MODEL],
+      hint: apiKey
+        ? ''
+        : !map[AI_KEY] && !map[AI_BASE_URL] && !map[AI_MODEL]
+          ? '未在 system_config 中找到 SYSTEM_AI_API_KEY / SYSTEM_AI_BASE_URL / SYSTEM_AI_MODEL 三行配置'
+          : 'SYSTEM_AI_API_KEY 为空，请配置 API Key',
+    })
+  } catch (e) {
+    console.error('[api/admin/system-ai] read error:', e.message)
+    return NextResponse.json({ error: '读取失败：' + e.message }, { status: 500 })
+  }
 }
 
 // POST /api/admin/system-ai —— 仅超管或拥有 manage_system_ai 权限的管理员可写
@@ -74,36 +79,32 @@ export async function POST(req) {
     return NextResponse.json({ error: '请求体格式错误' }, { status: 400 })
   }
 
-  const { provider, base_url, model, key } = body || {}
+  const { base_url, model, key } = body || {}
   const server = getServerSupabase()
   if (!server) return NextResponse.json({ error: '服务端未配置 Supabase' }, { status: 500 })
 
-  // 读取现有配置，key 留空则保留原值
-  const { data: existing } = await server
-    .from('system_config')
-    .select('value')
-    .eq('key', SYSTEM_AI_CONFIG_KEY)
-    .maybeSingle()
-  const cur = existing?.value || {}
-  const curKey = readKey(cur)
+  try {
+    const map = await readRows(server)
+    const rows = []
+    if (base_url !== undefined) {
+      rows.push({ key: AI_BASE_URL, value: String(base_url || '').trim(), updated_at: new Date().toISOString() })
+    }
+    if (model !== undefined) {
+      rows.push({ key: AI_MODEL, value: String(model || '').trim(), updated_at: new Date().toISOString() })
+    }
+    // key 留空表示保留原值
+    if (key !== undefined && String(key || '').trim()) {
+      rows.push({ key: AI_KEY, value: String(key || '').trim(), updated_at: new Date().toISOString() })
+    }
 
-  const newVal = {
-    provider: provider || cur.provider || 'openai',
-    api_key: key && String(key).trim() ? String(key).trim() : curKey,
-    base_url: base_url || cur.base_url || cur.baseUrl || '',
-    model: model || cur.model || '',
+    if (rows.length) {
+      const { error } = await server.from('system_config').upsert(rows, { onConflict: 'key' })
+      if (error) throw error
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('[api/admin/system-ai] write error:', e.message)
+    return NextResponse.json({ error: '写入失败：' + e.message }, { status: 500 })
   }
-
-  const { error } = await server
-    .from('system_config')
-    .upsert(
-      { key: SYSTEM_AI_CONFIG_KEY, value: newVal, updated_at: new Date().toISOString() },
-      { onConflict: 'key' }
-    )
-  if (error) {
-    console.error('[api/admin/system-ai] upsert error:', error.message)
-    return NextResponse.json({ error: '写入失败：' + error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ ok: true })
 }

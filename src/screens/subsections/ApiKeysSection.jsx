@@ -75,7 +75,6 @@ export default function ApiKeysSection({ onClose }) {
 
   const openSystemEdit = () => {
     setSysForm({
-      provider: systemAi?.provider || 'openai',
       base_url: systemAi?.base_url || '',
       model: systemAi?.model || '',
       key: '',
@@ -106,12 +105,6 @@ export default function ApiKeysSection({ onClose }) {
           <div style={{ width: 38 }} />
         </div>
         <div className="scroll-y" style={{ flex: 1, padding: 16 }}>
-          <Lbl>服务商</Lbl>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-            {PROVIDERS.map((p) => (
-              <button key={p.v} onClick={() => setSysForm({ ...sysForm, provider: p.v })} style={chip(p.v === sysForm.provider)}>{p.l}</button>
-            ))}
-          </div>
           <Lbl>Base URL</Lbl>
           <input value={sysForm.base_url} onChange={(e) => setSysForm({ ...sysForm, base_url: e.target.value })} placeholder="https://api.openai.com/v1" style={inp} />
           <Lbl>模型</Lbl>
