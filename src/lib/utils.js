@@ -39,15 +39,32 @@ export function transformWordData(row) {
     word: row.word,
     romanization: row.romanization || '',
     pos: firstSense.pos || '',
-    senses: senses.map((s, i) => ({
-      senseId: s.sense_id ?? i + 1,
-      pos: s.pos || '',
-      meaning: s.meaning || '',
-      register: s.register || '通用',
-      examples: Array.isArray(s.examples) ? s.examples : [],
-      segmented: Array.isArray(s.segmented) ? s.segmented : [],
-      source: s.source || 'ai',
-    })),
+    senses: senses.map((s, i) => {
+      // 兼容旧结构：若 sense 顶部有 segmented 而 example 里没有，按顺序下发到 examples
+      const legacySegments = Array.isArray(s.segmented) ? s.segmented : []
+      const rawExamples = Array.isArray(s.examples) ? s.examples : []
+      const examples = rawExamples.map((ex, idx) => {
+        const exObj = ex || {}
+        // 新结构：segmented 在 example 内；旧结构： segmented 在 sense 顶部且可能是二维数组
+        const seg =
+          Array.isArray(exObj.segmented) && exObj.segmented.length
+            ? exObj.segmented
+            : (Array.isArray(legacySegments[idx]) ? legacySegments[idx] : [])
+        return {
+          th: exObj.th ?? exObj.thai ?? exObj.text ?? '',
+          zh: exObj.zh ?? exObj.zh_meaning ?? '',
+          segmented: seg,
+        }
+      })
+      return {
+        senseId: s.sense_id ?? i + 1,
+        pos: s.pos || '',
+        meaning: s.meaning || '',
+        register: s.register || '通用',
+        examples,
+        source: s.source || 'ai',
+      }
+    }),
     synonyms: normalizeRel(row.synonyms),
     antonyms: normalizeRel(row.antonyms),
     learnerAssociations: Array.isArray(row.learner_associations) ? row.learner_associations : [],

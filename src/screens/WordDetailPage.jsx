@@ -187,7 +187,13 @@ export default function WordDetailPage({ word }) {
                 <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--c-p600)', marginTop: 8, fontFamily: 'var(--th-font)' }}>
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div style={{ lineHeight: 1.5, wordBreak: 'break-word' }}>
-                      <ThaiSentence text={exThai} type="sentence" onWordClick={handleWordTap} style={{ fontFamily: 'var(--th-font)' }} />
+                      <ThaiSentence
+                        text={exThai}
+                        type="sentence"
+                        tokens={ex.segmented && ex.segmented.length ? ex.segmented : undefined}
+                        onWordClick={handleWordTap}
+                        style={{ fontFamily: 'var(--th-font)' }}
+                      />
                     </div>
                     <div style={{ color: 'var(--c-p500)', lineHeight: 1.5, wordBreak: 'break-word', fontFamily: 'var(--zh-font)' }}>{ex.zh}</div>
                   </div>

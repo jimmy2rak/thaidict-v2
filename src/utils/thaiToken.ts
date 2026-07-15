@@ -238,6 +238,40 @@ export function clearCustomWords(): void {
 
 // ---------- 4. 正向最长匹配分词（newmm 核心） ----------
 const MAX_WORD = 30 // 单个词最大字符数，防止异常长串卡死
+const MAX_ATOMIC_LEN = 8 // 超过此长度的匹配词会尝试拆成更小的词典词，避免复合词整串输出
+
+/**
+ * 尝试把长词拆成多个更短的词典词。
+ * 若整个 input 可被完全覆盖且拆成 2+ 个词，返回拆分结果；否则返回 null。
+ * 递归拆分：拆分出的每个部分若仍超长，会继续尝试拆分。
+ */
+function splitCompound(input: string): string[] | null {
+  if (input.length <= MAX_ATOMIC_LEN) return null
+  const parts: string[] = []
+  let i = 0
+  while (i < input.length) {
+    let matched: string | null = null
+    const maxLen = Math.min(MAX_WORD, input.length - i)
+    for (let len = maxLen; len >= 1; len--) {
+      const cand = input.slice(i, i + len)
+      // 不允许用 input 自身作为匹配，否则无限递归
+      if (cand !== input && DICT.has(cand)) {
+        matched = cand
+        break
+      }
+    }
+    if (!matched) return null
+    // 若该部分仍超长，递归尝试继续拆分
+    const sub = matched.length > MAX_ATOMIC_LEN ? splitCompound(matched) : null
+    if (sub) parts.push(...sub)
+    else parts.push(matched)
+    i += matched.length
+  }
+  // 只有真正拆成 2+ 个词且完全覆盖输入，才算拆分成功
+  if (parts.length < 2) return null
+  const cover = parts.reduce((sum, p) => sum + p.length, 0)
+  return cover === input.length ? parts : null
+}
 
 export function tokenize(input: string): Token[] {
   const clean = normalize(input)
@@ -273,6 +307,15 @@ export function tokenize(input: string): Token[] {
       }
     }
     if (matched) {
+      // 若命中的是一个长复合词，尝试拆成更细粒度的词典词
+      if (matched.length > MAX_ATOMIC_LEN) {
+        const split = splitCompound(matched)
+        if (split) {
+          split.forEach((p) => tokens.push({ text: p, type: 'word' }))
+          i += matched.length
+          continue
+        }
+      }
       tokens.push({ text: matched, type: 'word' })
       i += matched.length
     } else {
@@ -364,7 +407,7 @@ export function tokenizeFull(input: string): TokenizeResult {
 }
 
 // ---------- 5. 前端请求客户端（永久缓存 + 300ms 防抖 + 异常兜底） ----------
-const CACHE_PREFIX = 'thai_token_cache::v3' // localStorage 缓存前缀（永久保存）；v3 废弃旧版单字母拆分的错误缓存
+const CACHE_PREFIX = 'thai_token_cache::v4' // 升级到 v4：废弃旧缓存，避免早期错误分词结果长期留存
 const DEBOUNCE_MS = 300 // 防抖窗口：窗口内重复相同文本直接复用结果
 const _memo = new Map<string, Promise<Token[]>>() // 进行中的请求
 const _recent = new Map<string, { ts: number; value: Token[] }>() // 近期结果（防抖复用）

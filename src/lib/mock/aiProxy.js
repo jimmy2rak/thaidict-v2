@@ -14,9 +14,12 @@ export function generateMockWord(word, zhHint = '') {
         meaning: hint || '（模拟生成：未提供中文提示）',
         register: '通用',
         examples: hint
-          ? [{ thai: w, zh: hint }]
+          ? [{
+              th: w,
+              zh: hint,
+              segmented: [{ text: w, pos: '?', meaning: hint }],
+            }]
           : [],
-        segmented: [{ text: w, meaning: hint }],
         source: 'ai-mock',
       },
     ],
