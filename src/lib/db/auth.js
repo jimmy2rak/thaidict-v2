@@ -38,7 +38,21 @@ export async function signUpWithEmail(email, password, username) {
     mockSetSession(MOCK_SESSION)
     return { data: { user: MOCK_USER, session: MOCK_SESSION }, error: null }
   }
-  return supabase.auth.signUp({ email, password, options: { data: { username } } })
+  try {
+    const res = await fetch('/api/sign-up', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, username }),
+    })
+    const json = await res.json()
+    if (!res.ok) return { data: null, error: json.error }
+    // 注册成功后自动登录
+    const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInErr) return { data: null, error: signInErr.message }
+    return { data: signInData, error: null }
+  } catch (e) {
+    return { data: null, error: e.message }
+  }
 }
 
 // 规范回跳域名：优先用 NEXT_PUBLIC_SITE_URL（如 https://thaidict.182183.xyz），
@@ -60,9 +74,19 @@ export async function signInWithOAuth(provider) {
 
 export async function sendMagicLink(email) {
   if (!isSupabaseConfigured) {
-    return { data: {}, error: null }
+    return { data: { sent: true }, error: null }
   }
-  return supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectBase() } })
+  try {
+    const res = await fetch('/api/send-magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const json = await res.json()
+    return res.ok ? { data: json.data, error: null } : { data: null, error: json.error }
+  } catch (e) {
+    return { data: null, error: e.message }
+  }
 }
 
 export async function signOut() {
@@ -103,7 +127,7 @@ export async function verifyBrevoOtp(email, code, purpose) {
     const stored = localStorage.getItem(`thaidict:otp:${email}:${purpose}`)
     if (stored === String(code)) {
       mockSetSession(MOCK_SESSION)
-      return { data: { email }, error: null }
+      return { data: { email, session: MOCK_SESSION }, error: null }
     }
     return { data: null, error: '验证码错误' }
   }
@@ -114,8 +138,16 @@ export async function verifyBrevoOtp(email, code, purpose) {
       body: JSON.stringify({ email, code, purpose }),
     })
     const json = await res.json()
-    if (res.ok) mockSetSession(MOCK_SESSION)
-    return res.ok ? { data: json.data, error: null } : { data: null, error: json.error }
+    if (!res.ok) return { data: null, error: json.error }
+    // 后端已验证 OTP 并创建/更新用户，返回临时密码；前端用密码登录换取真实 session。
+    const { password } = json.data || {}
+    if (!password) return { data: null, error: '服务端未返回登录凭据' }
+    const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (signInErr) return { data: null, error: signInErr.message }
+    return { data: { session: signInData.session, user: signInData.user }, error: null }
   } catch (e) {
     return { data: null, error: e.message }
   }

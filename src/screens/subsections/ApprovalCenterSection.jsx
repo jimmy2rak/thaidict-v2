@@ -37,8 +37,8 @@ export default function ApprovalCenterSection({ onClose }) {
     if (a.type === 'word') {
       const { zh_hint, ...entry } = a.payload || {}
       if (entry.word) {
-        const savedComm = await saveCommunityWord(entry, a.requested_by, zh_hint || '')
-        if (!savedComm) commErr = '社区词记录写入失败（字段不匹配）'
+        const { error: commError } = await saveCommunityWord(entry, a.requested_by, zh_hint || '')
+        if (commError) commErr = commError
         const savedDict = await addDictionaryWord(entry)
         if (!savedDict) dictErr = '主词典写入失败（权限或表结构问题）'
       }
@@ -46,7 +46,7 @@ export default function ApprovalCenterSection({ onClose }) {
     if (dictErr) {
       toast(`批准失败：${dictErr}`)
     } else if (commErr) {
-      toast(`已批准入库主词典，但${commErr}`)
+      toast(`已批准入库主词典，但社区词记录写入失败：${commErr}`)
     } else {
       toast('已批准入库')
     }

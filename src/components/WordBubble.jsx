@@ -9,7 +9,7 @@ import React, { useEffect, useRef } from 'react'
  *   - status === 'empty'   → 暂无该词条释义
  * 点击气泡以外区域自动关闭。
  */
-export default function WordBubble({ word, x, y, status, meanings, onClose }) {
+export default function WordBubble({ word, x, y, status, meanings, onClose, onWordClick }) {
   const ref = useRef(null)
 
   // 点击外部关闭
@@ -28,6 +28,11 @@ export default function WordBubble({ word, x, y, status, meanings, onClose }) {
   const vh = globalThis.innerHeight || 9999
   const left = Math.max(8, Math.min(x, vw - W - 8))
   const top = Math.max(8, Math.min(y, vh - H - 8))
+
+  const handleWordClick = () => {
+    onWordClick?.(word)
+    onClose?.()
+  }
 
   return (
     <div
@@ -49,7 +54,20 @@ export default function WordBubble({ word, x, y, status, meanings, onClose }) {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <span style={{ fontFamily: 'var(--th-font)', fontSize: 16, fontWeight: 700 }}>{word}</span>
+        <span
+          onClick={handleWordClick}
+          title="查看词条详情"
+          style={{
+            fontFamily: 'var(--th-font)',
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: onWordClick ? 'pointer' : 'default',
+            textDecoration: onWordClick ? 'underline' : 'none',
+            color: 'var(--c-p800)',
+          }}
+        >
+          {word}
+        </span>
         <button
           onClick={onClose}
           title="关闭"

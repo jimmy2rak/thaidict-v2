@@ -158,6 +158,7 @@ export default function ThaiSentence({
           status={bubble.status}
           meanings={bubble.meanings}
           onClose={() => setBubble(null)}
+          onWordClick={onWordClick}
         />
       )}
     </span>

@@ -52,6 +52,7 @@ export default function WordDetailPage({ word }) {
   const [showMorph, setShowMorph] = useState(false)
   const [showNote, setShowNote] = useState(false)
   const [meaningMap, setMeaningMap] = useState({})
+  const [noteMap, setNoteMap] = useState({})
 
   useEffect(() => {
     if (userId && word) {
@@ -64,9 +65,18 @@ export default function WordDetailPage({ word }) {
   useEffect(() => {
     if (!data) return
     const words = new Set()
+    const notes = {}
     ;(data.synonyms || []).forEach((s) => s.word && words.add(s.word))
     ;(data.antonyms || []).forEach((s) => s.word && words.add(s.word))
-    ;(data.learnerAssociations || []).forEach((la) => (la.words || []).forEach((w) => w && words.add(w)))
+    ;(data.learnerAssociations || []).forEach((la) => {
+      const list = Array.isArray(la.words) ? la.words : la.word ? [la.word] : []
+      list.forEach((w) => {
+        if (!w) return
+        words.add(w)
+        if (la.note && !notes[w]) notes[w] = la.note
+      })
+    })
+    setNoteMap(notes)
     if (words.size === 0) return
     let cancelled = false
     Promise.all([...words].map(async (w) => [w, await getWordMeanings(w)])).then((pairs) => {
@@ -177,7 +187,7 @@ export default function WordDetailPage({ word }) {
                 <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--c-p600)', marginTop: 8, fontFamily: 'var(--th-font)' }}>
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div style={{ lineHeight: 1.5, wordBreak: 'break-word' }}>
-                      <ThaiSentence text={exThai} type="sentence" style={{ fontFamily: 'var(--th-font)' }} />
+                      <ThaiSentence text={exThai} type="sentence" onWordClick={handleWordTap} style={{ fontFamily: 'var(--th-font)' }} />
                     </div>
                     <div style={{ color: 'var(--c-p500)', lineHeight: 1.5, wordBreak: 'break-word', fontFamily: 'var(--zh-font)' }}>{ex.zh}</div>
                   </div>
@@ -200,7 +210,7 @@ export default function WordDetailPage({ word }) {
             <div style={{ fontSize: 12, color: 'var(--c-teal)', marginBottom: 4 }}>近义词</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {data.synonyms.map((s, i) => (
-                <RelWord key={i} word={s.word} color="var(--c-teal)" meaning={meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
+                <RelWord key={i} word={s.word} color="var(--c-teal)" meaning={s.meaning || meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
               ))}
             </div>
           </Card>
@@ -212,7 +222,7 @@ export default function WordDetailPage({ word }) {
             <div style={{ fontSize: 12, color: 'var(--c-rose)', marginBottom: 4 }}>反义词</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {data.antonyms.map((s, i) => (
-                <RelWord key={i} word={s.word} color="var(--c-rose)" meaning={meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
+                <RelWord key={i} word={s.word} color="var(--c-rose)" meaning={s.meaning || meaningMap[s.word]} onClick={() => handleWordTap(s.word)} />
               ))}
             </div>
           </Card>
@@ -223,15 +233,12 @@ export default function WordDetailPage({ word }) {
           <Card style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 12, color: 'var(--c-gold)', marginBottom: 4 }}>学习者联想</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {Array.from(
-                new Set(
-                  data.learnerAssociations.flatMap((la) =>
-                    Array.isArray(la.words) ? la.words : la.word ? [la.word] : []
-                  )
-                )
-              ).map((w, i) => (
-                <RelWord key={i} word={w} color="var(--c-gold)" meaning={meaningMap[w]} onClick={() => handleWordTap(w)} />
-              ))}
+              {data.learnerAssociations.map((la, i) => {
+                const w = la.word || (la.words && la.words[0])
+                if (!w) return null
+                const meaning = meaningMap[w] || (la.note ? [la.note] : null)
+                return <RelWord key={i} word={w} color="var(--c-gold)" meaning={meaning} onClick={() => handleWordTap(w)} />
+              })}
             </div>
           </Card>
         )}

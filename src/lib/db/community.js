@@ -7,29 +7,35 @@ export async function saveCommunityWord(entry, userId, zhHint) {
   if (!isSupabaseConfigured) {
     const list = getGlobal('community_words', [])
     const i = list.findIndex((w) => w.word.toLowerCase() === (entry.word || '').toLowerCase())
-    const row = { ...entry, zh_hint: zhHint || '', updated_at: new Date().toISOString() }
+    const row = { ...entry, submitted_by: userId || null, zh_hint: zhHint || '', updated_at: new Date().toISOString() }
     if (i >= 0) list[i] = row
     else list.push(row)
     setGlobal('community_words', list)
-    return row
+    return { data: row, error: null }
   }
-  if (!supabase) return null
-  // 真实库 community_words 列：word, senses, zh_hint, source, created_at。
-  // 只提交这几列，避免传入 entry 里的 romanization/synonyms/antonyms/learner_associations 等触发 400。
+  if (!supabase) return { data: null, error: 'Supabase 未配置' }
+  // 真实库 community_words 列：word, romanization, senses, synonyms, antonyms,
+  // learner_associations, zh_hint, source, submitted_by, created_at。
+  // 只提交这几列，避免传入 entry 里的非表字段触发 400。
   const row = {
     word: (entry.word || '').toLowerCase(),
+    romanization: entry.romanization || '',
     senses: entry.senses || [],
+    synonyms: entry.synonyms || [],
+    antonyms: entry.antonyms || [],
+    learner_associations: entry.learner_associations || [],
     zh_hint: zhHint || '',
     source: entry.source || 'community',
+    submitted_by: userId || null,
   }
   const { data, error } = await safeQuery(
     supabase.from('community_words').upsert(row, { onConflict: 'word' }).select().single()
   )
   if (error) {
     console.error('[saveCommunityWord]', error.message)
-    return null
+    return { data: null, error: error.message }
   }
-  return data
+  return { data, error: null }
 }
 
 export async function getCommunityWord(word) {

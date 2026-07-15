@@ -243,7 +243,7 @@ export default function LoginPage({ onForgot }) {
               <>
                 {!otpSent ? (
                   <Btn onClick={onSendOtp} disabled={loading} style={{ width: '100%' }}>
-                    {loading ? <Spinner size={16} color="#fff" /> : (<><Send size={15} /> 发送验证码</>)}
+                    {loading ? <Spinner size={16} color="#fff" /> : (<><Send size={15} /> 发送验证码（登录/注册）</>)}
                   </Btn>
                 ) : (
                   <>
@@ -252,7 +252,7 @@ export default function LoginPage({ onForgot }) {
                       <input style={inputStyle} placeholder="6 位验证码" value={otpCode} onChange={(e) => setOtpCode(e.target.value)} />
                     </div>
                     <Btn onClick={onVerifyOtp} disabled={loading} style={{ width: '100%' }}>
-                      {loading ? <Spinner size={16} color="#fff" /> : '验证并登录'}
+                      {loading ? <Spinner size={16} color="#fff" /> : '验证并登录/注册'}
                     </Btn>
                   </>
                 )}
