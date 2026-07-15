@@ -15,6 +15,8 @@ import { transformWordData } from '../lib/utils.js'
 import { speak } from '../utils/tts.js'
 import { Card, Badge, IconButton, WordToken, Spinner } from '../components/UIComponents.jsx'
 import ThaiSentence from '../components/ThaiSentence.jsx'
+import SourceTag from '../components/SourceTag.jsx'
+import { getSourceMeta } from '../lib/sourceMeta.js'
 import MorphologySection from './subsections/MorphologySection.jsx'
 import NoteEditorSection from './subsections/NoteEditorSection.jsx'
 
@@ -147,7 +149,7 @@ export default function WordDetailPage({ word }) {
                 {meta.senseCount != null && <Badge color="var(--c-primary)">{meta.senseCount} 个义项</Badge>}
                 {meta.origin && <Badge color="var(--c-info)">{meta.origin}</Badge>}
                 {meta.sources.map((src, i) => (
-                  <Badge key={i} color="var(--c-p500)">{src}</Badge>
+                  <SourceTag key={i} sourceKey={src} />
                 ))}
               </div>
             </div>
@@ -166,7 +168,7 @@ export default function WordDetailPage({ word }) {
               )}
               <Badge color="var(--c-p800)">{s.pos || '—'}</Badge>
               {(s.register && s.register !== '通用') && <Badge color="var(--c-info)">{s.register}</Badge>}
-              {s.source && s.source !== 'ai' && <Badge color="var(--c-p500)">{s.source}</Badge>}
+              {s.source && s.source !== 'ai' && (getSourceMeta(s.source) ? <SourceTag sourceKey={s.source} /> : <Badge color="var(--c-p500)">{s.source}</Badge>)}
               <span style={{ fontSize: 15, color: 'var(--c-p800)', fontWeight: 500 }}>{s.meaning}</span>
             </div>
             {s.examples?.map((ex, j) => {
@@ -237,7 +239,16 @@ export default function WordDetailPage({ word }) {
             {meta.senseCount != null && <MetaRow label="义项数" value={String(meta.senseCount)} />}
             {meta.enrichmentStatus && <MetaRow label="丰富状态" value={meta.enrichmentStatus} />}
             {meta.origin && <MetaRow label="语料来源" value={meta.origin} />}
-            {meta.sources.length > 0 && <MetaRow label="来源明细" value={meta.sources.join('、')} />}
+            {meta.sources.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: 13 }}>
+                <span style={{ flexShrink: 0, color: 'var(--c-p500)', minWidth: 64 }}>来源明细</span>
+                <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {meta.sources.map((src, i) => (
+                    <SourceTag key={i} sourceKey={src} />
+                  ))}
+                </span>
+              </div>
+            )}
             {meta.userSentenceCount != null && <MetaRow label="用户句子数" value={String(meta.userSentenceCount)} />}
             <MetaRow
               label="词频"

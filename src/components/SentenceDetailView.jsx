@@ -11,6 +11,8 @@ import {
 import { speak } from '../utils/tts.js'
 import { Card, Badge, IconButton, SectionTitle } from './UIComponents.jsx'
 import ThaiSentence from './ThaiSentence.jsx'
+import SourceTag from './SourceTag.jsx'
+import { getSourceMeta } from '../lib/sourceMeta.js'
 
 /**
  * SentenceDetailView —— 句子/短语详情（参考图结构）
@@ -104,7 +106,7 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
               {(source || difficulty != null) && (
                 <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {difficulty != null && <Badge color="var(--c-rose)">难度 {difficulty}</Badge>}
-                  {source && <Badge color="var(--c-p500)">来源 {source}</Badge>}
+                  {source && (getSourceMeta(source) ? <SourceTag sourceKey={source} /> : <Badge color="var(--c-p500)">来源 {source}</Badge>)}
                 </div>
               )}
             </div>
