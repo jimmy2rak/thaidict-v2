@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
-import { getSentencesByCategory, getSentenceBookmarks, bookmarkSentence } from '../../lib/db/index.js'
+import { getSentencesByCategory, getSentenceBookmarks, bookmarkSentence, removeSentenceBookmark } from '../../lib/db/index.js'
 import { IconButton, Spinner, EmptyState } from '../../components/UIComponents.jsx'
 import PhraseCard from '../../components/PhraseCard.jsx'
 
@@ -63,10 +63,19 @@ export default function PhrasesSection({ onClose, onOpen }) {
 
   const handleBookmark = async (sentenceId) => {
     if (!userId) return app.toast('请先登录')
-    if (bookmarks.has(sentenceId)) return
-    await bookmarkSentence(userId, sentenceId)
-    setBookmarks((prev) => new Set(prev).add(sentenceId))
-    app.toast('已收藏')
+    if (bookmarks.has(sentenceId)) {
+      await removeSentenceBookmark(userId, sentenceId)
+      setBookmarks((prev) => {
+        const next = new Set(prev)
+        next.delete(sentenceId)
+        return next
+      })
+      app.toast('已取消收藏')
+    } else {
+      await bookmarkSentence(userId, sentenceId)
+      setBookmarks((prev) => new Set(prev).add(sentenceId))
+      app.toast('已收藏')
+    }
   }
 
   return (

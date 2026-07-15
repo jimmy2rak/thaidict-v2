@@ -242,3 +242,35 @@ export async function isSentenceBookmarked(userId, sentenceId) {
   )
   return !!data
 }
+
+// 取消句子收藏：删除扁平收藏记录，并从默认「我的收藏」句子夹移除，使星级可切换。
+export async function removeSentenceBookmark(userId, sentenceId) {
+  if (!isSupabaseConfigured) {
+    const list = mockBookmarks(userId).filter((b) => b.sentence_id !== sentenceId)
+    setUserColl(userId, 'sentence_bookmarks', list)
+    return list
+  }
+  if (!supabase || !userId) return []
+  await safeQuery(
+    supabase.from('user_sentence_bookmarks').delete().eq('user_id', userId).eq('sentence_id', sentenceId)
+  )
+  try {
+    const { data: fav } = await safeQuery(
+      supabase
+        .from('user_folders')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('folder_type', 'sentence')
+        .eq('name', '我的收藏')
+        .maybeSingle()
+    )
+    if (fav?.id) {
+      await safeQuery(
+        supabase.from('user_folder_sentences').delete().eq('folder_id', fav.id).eq('sentence_id', sentenceId)
+      )
+    }
+  } catch (e) {
+    console.error('[removeSentenceBookmark:folder]', e?.message || e)
+  }
+  return getSentenceBookmarks(userId)
+}

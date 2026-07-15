@@ -137,13 +137,11 @@ export default function LoginPage({ onForgot }) {
     <div className="scroll-y" style={{ flex: 1, padding: '48px 24px 24px', display: 'flex', flexDirection: 'column' }}>
       {/* 品牌头部 */}
       <div style={{ textAlign: 'center', marginBottom: 30 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-          <MainLogo size={52} />
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--c-p800)' }}>词笺</div>
-            <div style={{ fontSize: 12, color: 'var(--c-p500)' }}>中泰双语智能词典</div>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+          <MainLogo size={88} />
         </div>
+        <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-p800)', letterSpacing: 2 }}>词笺</div>
+        <div style={{ fontSize: 13, color: 'var(--c-p500)', marginTop: 4 }}>中泰双语智能词典</div>
       </div>
 
       {/* Google / GitHub 圆形按钮 */}

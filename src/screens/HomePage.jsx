@@ -14,12 +14,14 @@ import {
   removeBookmark,
   isSentenceBookmarked,
   bookmarkSentence,
+  removeSentenceBookmark,
 } from '../lib/db/index.js'
 import { speak } from '../utils/tts.js'
 import { transformWordData } from '../lib/utils.js'
 import { Card, Badge, Spinner, EmptyState } from '../components/UIComponents.jsx'
 import ThaiSentence from '../components/ThaiSentence.jsx'
 import PhraseCard from '../components/PhraseCard.jsx'
+import WordCard from '../components/WordCard.jsx'
 import PhrasesSection from './subsections/PhrasesSection.jsx'
 import PhraseDetailSection from './subsections/PhraseDetailSection.jsx'
 import { PagodaLine, LeafLine, BowlLine } from '../components/Decorations.jsx'
@@ -210,54 +212,25 @@ function SearchResults({ results, onTap, searching, query, onAiSearch }) {
 }
 
 function DailyWordCard({ word, onRefresh, onTap, refreshing, rate, userId }) {
-  // hooks 必须放在任何 early return 之前，避免 word 由 null 变为有值时 hooks 数量不一致
-  const [bookmarked, setBookmarked] = React.useState(false)
-  React.useEffect(() => {
-    const w = word ? (typeof word === 'object' ? (word.word || '') : word) : ''
-    if (userId && w) isBookmarked(userId, w).then(setBookmarked)
-  }, [userId, word])
-
   if (!word) return null
   const data = typeof word === 'object' ? transformWordData(word) : null
   const w = data || word
   const first = (w.senses && w.senses[0]) || {}
 
-  const toggleBookmark = async (e) => {
-    e?.stopPropagation?.()
-    if (!userId) return
-    if (bookmarked) {
-      await removeBookmark(userId, w.word)
-      setBookmarked(false)
-    } else {
-      await addBookmark(userId, w.word)
-      setBookmarked(true)
-    }
-  }
-
   return (
-    <Card style={{ marginBottom: 10, cursor: 'pointer' }} onClick={() => onTap(w.word)}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)' }}>
-            <ThaiSentence text={w.word} type="word" style={{ fontSize: 18, fontWeight: 700 }} />
-          </div>
-          {w.romanization && <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 1 }}>{w.romanization}</div>}
-          <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 2 }}>{first.meaning}</div>
-          {first.examples?.[0] && (
-            <div style={{ fontSize: 11, color: 'var(--c-p500)', marginTop: 2 }}>
-              {(first.examples[0].th ?? first.examples[0].thai ?? '')} · {first.examples[0].zh}
-            </div>
-          )}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }} onClick={e => e.stopPropagation()}>
-          <IconBtn onClick={() => speak(w.word, { rate })} style={{ width: 32, height: 32 }}><Volume2 size={16} /></IconBtn>
-          <IconBtn onClick={toggleBookmark} active={bookmarked} style={{ width: 32, height: 32 }}>
-            <Star size={16} fill={bookmarked ? 'var(--c-amber)' : 'none'} color={bookmarked ? 'var(--c-amber)' : 'var(--c-p600)'} />
-          </IconBtn>
-          <IconBtn onClick={onRefresh} disabled={refreshing} style={{ width: 32, height: 32 }}><RefreshCw size={15} className={refreshing ? 'spin' : ''} /></IconBtn>
-        </div>
-      </div>
-    </Card>
+    <div style={{ marginBottom: 10 }}>
+      <WordCard
+        word={w.word}
+        romanization={w.romanization || ''}
+        meaning={first.meaning || ''}
+        example={first.examples?.[0]}
+        onTap={onTap}
+        refreshable
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        rate={rate}
+      />
+    </div>
   )
 }
 
@@ -272,9 +245,13 @@ function DailySentenceCard({ sentence, onRefresh, onOpen, refreshing, userId }) 
 
   const toggleBookmark = async () => {
     if (!userId) return
-    if (bookmarked) return
-    await bookmarkSentence(userId, sentence.id)
-    setBookmarked(true)
+    if (bookmarked) {
+      await removeSentenceBookmark(userId, sentence.id)
+      setBookmarked(false)
+    } else {
+      await bookmarkSentence(userId, sentence.id)
+      setBookmarked(true)
+    }
   }
 
   return (

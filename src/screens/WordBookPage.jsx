@@ -8,6 +8,9 @@ import {
 import { Card, Badge, Spinner, EmptyState, IconButton } from '../components/UIComponents.jsx'
 import ThaiSentence from '../components/ThaiSentence.jsx'
 import PhraseCard from '../components/PhraseCard.jsx'
+import WordCard from '../components/WordCard.jsx'
+import { getWordByThai } from '../lib/db/index.js'
+import { transformWordData } from '../lib/utils.js'
 
 const TABS = [
   { key: 'recent', label: '最近', icon: Clock },
@@ -67,24 +70,41 @@ export default function WordBookPage() {
 // ---------- 最近查词 ----------
 function RecentTab({ userId, onTap }) {
   const [list, setList] = useState(null)
-  useEffect(() => { if (userId) getUserRecentWords(userId, 100).then(setList); else setList([]) }, [userId])
+  useEffect(() => {
+    if (!userId) { setList([]); return }
+    let cancelled = false
+    getUserRecentWords(userId, 100).then(async (rows) => {
+      const enriched = await Promise.all(
+        rows.map(async (r) => {
+          try {
+            const row = await getWordByThai(r.word)
+            if (row) {
+              const t = transformWordData(row)
+              const first = t.senses?.[0] || {}
+              return { word: r.word, romanization: t.romanization || '', meaning: first.meaning || '', example: first.examples?.[0], count: r.lookup_count || 1 }
+            }
+          } catch (e) { /* 忽略，走兜底 */ }
+          return { word: r.word, romanization: '', meaning: '', count: r.lookup_count || 1 }
+        })
+      )
+      if (!cancelled) setList(enriched)
+    })
+    return () => { cancelled = true }
+  }, [userId])
   if (list === null) return <CenterSpinner />
   if (list.length === 0) return <EmptyState icon="🕘" text="还没有查词记录" />
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {list.map((r) => (
-        <Card key={r.word} onClick={() => onTap(r.word)} style={{ cursor: 'pointer' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--th-font)', fontSize: 16, fontWeight: 700, color: 'var(--c-p800)', lineHeight: 1.35 }}>{r.word}</div>
-              <div style={{ marginTop: 2 }}>
-                <ThaiSentence text={r.word} type="sentence" separator=" + " style={{ fontSize: 11, lineHeight: 1.45, color: 'var(--c-p500)' }} />
-              </div>
-            </div>
-            <span style={{ fontSize: 10, color: 'var(--c-p500)', flexShrink: 0, marginLeft: 6 }}>查 {r.lookup_count || 1} 次</span>
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--c-p600)', marginTop: 2 }}>{r.senses?.[0]?.meaning || ''}</div>
-        </Card>
+        <WordCard
+          key={r.word}
+          word={r.word}
+          romanization={r.romanization}
+          meaning={r.meaning}
+          example={r.example}
+          subtitle={r.count > 1 ? `查 ${r.count} 次` : ''}
+          onTap={onTap}
+        />
       ))}
     </div>
   )
@@ -119,19 +139,40 @@ function FolderTab({ userId, type, onOpen }) {
 // ---------- 单词夹详情 ----------
 function WordFolderDetail({ folderId, name, onBack, onTap }) {
   const [words, setWords] = useState(null)
-  useEffect(() => { getFolderWords(folderId).then(setWords) }, [folderId])
+  useEffect(() => {
+    let cancelled = false
+    getFolderWords(folderId).then(async (raw) => {
+      const enriched = await Promise.all(
+        raw.map(async (w) => {
+          try {
+            const row = await getWordByThai(w.word)
+            if (row) {
+              const t = transformWordData(row)
+              const first = t.senses?.[0] || {}
+              return { word: w.word, romanization: t.romanization || '', meaning: first.meaning || '', example: first.examples?.[0] }
+            }
+          } catch (e) { /* 忽略 */ }
+          return { word: w.word, romanization: '', meaning: '' }
+        })
+      )
+      if (!cancelled) setWords(enriched)
+    })
+    return () => { cancelled = true }
+  }, [folderId])
   if (words === null) return <DetailShell name={name} onBack={onBack}><CenterSpinner /></DetailShell>
   return (
     <DetailShell name={name} onBack={onBack}>
       {words.length === 0 ? <EmptyState icon="📭" text="文件夹为空" /> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {words.map((w, i) => (
-            <Card key={i} onClick={() => onTap(w.word)} style={{ cursor: 'pointer' }}>
-              <div style={{ fontFamily: 'var(--th-font)', fontSize: 16, fontWeight: 700, color: 'var(--c-p800)', lineHeight: 1.35 }}>{w.word}</div>
-              <div style={{ marginTop: 2 }}>
-                <ThaiSentence text={w.word} type="sentence" separator=" + " style={{ fontSize: 11, lineHeight: 1.45, color: 'var(--c-p500)' }} />
-              </div>
-            </Card>
+            <WordCard
+              key={i}
+              word={w.word}
+              romanization={w.romanization}
+              meaning={w.meaning}
+              example={w.example}
+              onTap={onTap}
+            />
           ))}
         </div>
       )}

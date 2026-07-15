@@ -111,22 +111,22 @@ export default function App() {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', overflow: 'hidden' }}>
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         {app.visitedPages.has('home') && (
-          <div style={{ display: app.page === 'home' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <div key="home" style={{ display: app.page === 'home' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
             <HomePage />
           </div>
         )}
         {app.visitedPages.has('words') && (
-          <div style={{ display: app.page === 'words' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <div key="words" style={{ display: app.page === 'words' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
             <WordBookPage />
           </div>
         )}
         {app.visitedPages.has('learn') && (
-          <div style={{ display: app.page === 'learn' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <div key="learn" style={{ display: app.page === 'learn' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
             <LearnPage />
           </div>
         )}
         {app.visitedPages.has('me') && (
-          <div style={{ display: app.page === 'me' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <div key="me" style={{ display: app.page === 'me' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
             <ProfilePage />
           </div>
         )}

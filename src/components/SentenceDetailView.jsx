@@ -3,6 +3,7 @@ import { ArrowLeft, Star, Volume2, FolderPlus, X } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import {
   bookmarkSentence,
+  removeSentenceBookmark,
   isSentenceBookmarked,
   getFolders,
   addSentenceToFolder,
@@ -52,10 +53,14 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
 
   const toggleBookmark = async () => {
     if (!userId) return toast('请先登录')
-    if (bookmarked) return toast('已收藏')
-    await bookmarkSentence(userId, sentence.id)
-    setBookmarked(true)
-    toast('已收藏')
+    if (bookmarked) {
+      await removeSentenceBookmark(userId, sentence.id)
+      setBookmarked(false)
+      toast('已取消收藏')
+    } else {
+      // 未收藏时点击星标 → 弹出句子夹选择（满足「收藏时提示选文件夹」）
+      openFolder()
+    }
   }
 
   const openFolder = async () => {
@@ -63,9 +68,11 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
     if (userId) setFolders(await getFolders(userId))
   }
   const onAdd = async (fid) => {
+    await bookmarkSentence(userId, sentence.id)
     await addSentenceToFolder(fid, sentence.id)
+    setBookmarked(true)
     setShowFolder(false)
-    toast('已加入句子夹')
+    toast('已收藏并加入句子夹')
   }
   const onCreate = async () => {
     if (!newFolder.trim() || !userId) return
