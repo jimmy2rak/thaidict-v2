@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Shield, UserCog } from 'lucide-react'
+import { ArrowLeft, Shield, UserCog, Copy, Check, Database, ChevronDown } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
-import { listUsers, setUserRole, isSuperAdmin, hasPermission, PERMISSION_OPTIONS, ROLE_LABELS } from '../../lib/db/index.js'
+import { isSuperAdmin, hasPermission, PERMISSION_OPTIONS, ROLE_LABELS } from '../../lib/db/index.js'
+import { fetchMembers, adminSetRole } from '../../lib/db/adminApi.js'
 import { Card, IconButton, Spinner } from '../../components/UIComponents.jsx'
 
 export default function AdminManagementSection({ onClose }) {
@@ -14,7 +15,7 @@ export default function AdminManagementSection({ onClose }) {
   }, [])
 
   const load = async () => {
-    const data = await listUsers()
+    const data = await fetchMembers()
     setUsers(data)
   }
 
@@ -40,7 +41,11 @@ export default function AdminManagementSection({ onClose }) {
             onSaved={() => { setSelected(null); load(); toast('权限已更新') }}
           />
         ) : (
-          <UserList users={users} onSelect={setSelected} />
+          <>
+            <DbGuideCard />
+            <div style={{ height: 12 }} />
+            <UserList users={users} onSelect={setSelected} />
+          </>
         )}
       </div>
     </div>
@@ -59,6 +64,7 @@ function Header({ onClose }) {
 
 function UserList({ users, onSelect }) {
   if (users === null) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>
+  if (users.length === 0) return <div style={{ textAlign: 'center', color: 'var(--c-p500)', padding: 40 }}>暂无成员</div>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {users.map((u) => {
@@ -69,9 +75,9 @@ function UserList({ users, onSelect }) {
               <span style={{ width: 36, height: 36, borderRadius: 10, background: 'color-mix(in srgb, var(--c-teal) 14%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Shield size={18} color="var(--c-teal)" />
               </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-p800)' }}>{u.username || u.email || u.user_id}</div>
-                <div style={{ fontSize: 12, color: 'var(--c-p500)' }}>{u.email || u.user_id}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-p800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.username || u.email || u.user_id}</div>
+                <div style={{ fontSize: 12, color: 'var(--c-p500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email || u.user_id}</div>
               </div>
               <Badge role={role} />
             </div>
@@ -96,9 +102,13 @@ function UserEditor({ user, onBack, onSaved }) {
   const save = async () => {
     if (superAdmin) return
     setSaving(true)
-    await setUserRole(user.id || user.user_id, role, permissions)
-    setSaving(false)
-    onSaved()
+    try {
+      await adminSetRole(user.id || user.user_id, role, permissions)
+      onSaved()
+    } catch (e) {
+      setSaving(false)
+      alert(e.message || '保存失败')
+    }
   }
 
   return (
@@ -129,7 +139,7 @@ function UserEditor({ user, onBack, onSaved }) {
           </select>
         )}
         {superAdmin && (
-          <div style={{ fontSize: 12, color: 'var(--c-gold)', marginTop: 8 }}>超级管理员只能在数据库中手动添加或移除，UI 中不可更改。</div>
+          <div style={{ fontSize: 12, color: 'var(--c-gold)', marginTop: 8 }}>超级管理员只能在数据库中手动添加或移除，UI 中不可更改（见下方「数据库操作指南」）。</div>
         )}
       </Card>
 
@@ -175,8 +185,101 @@ function Badge({ role }) {
   const label = ROLE_LABELS[role] || '用户'
   const color = role === 'super_admin' ? 'var(--c-gold)' : role === 'admin' ? 'var(--c-teal)' : 'var(--c-s500)'
   return (
-    <span style={{ padding: '3px 8px', borderRadius: 8, background: 'color-mix(in srgb, ' + color + ' 14%, transparent)', color, fontSize: 11, fontWeight: 600 }}>
+    <span style={{ padding: '3px 8px', borderRadius: 8, background: 'color-mix(in srgb, ' + color + ' 14%, transparent)', color, fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
       {label}
     </span>
+  )
+}
+
+/* ============ 数据库操作指南（仅超管可见） ============ */
+
+const SQL_SET_SUPER = `-- 将指定邮箱用户设为「超级管理员」（自动解析 UUID，幂等）
+insert into user_roles (user_id, role, permissions, updated_at)
+select id, 'super_admin', array[]::text[], now()
+from auth.users
+where email = 'mindsoya@gmail.com'
+on conflict (user_id)
+do update set role = 'super_admin', permissions = array[]::text[], updated_at = now();`
+
+const SQL_REMOVE_SUPER = `-- 取消某用户的超级管理员（降级为普通用户）
+update user_roles
+set role = 'user', permissions = array[]::text[], updated_at = now()
+where user_id = (select id from auth.users where email = 'mindsoya@gmail.com');`
+
+const SQL_PROMOTE_ADMIN = `-- 通过数据库直接将某用户提升为「管理员」（可选，UI 也可操作）
+insert into user_roles (user_id, role, permissions, updated_at)
+select id, 'admin', array['approve_entries','manage_users','manage_settings','view_stats'], now()
+from auth.users
+where email = 'someone@example.com'
+on conflict (user_id)
+do update set role = 'admin', updated_at = now();`
+
+function CopyBtn({ text }) {
+  const [copied, setCopied] = useState(false)
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // 忽略
+    }
+  }
+  return (
+    <button
+      onClick={onCopy}
+      title="复制 SQL"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 8,
+        border: '1px solid var(--c-p200)', background: 'var(--c-surface)', color: 'var(--c-p600)',
+        fontSize: 12, cursor: 'pointer', flexShrink: 0,
+      }}
+    >
+      {copied ? <Check size={13} color="var(--c-teal)" /> : <Copy size={13} />}
+      {copied ? '已复制' : '复制'}
+    </button>
+  )
+}
+
+function SqlBlock({ title, sql }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-p700)' }}>{title}</span>
+        <CopyBtn text={sql} />
+      </div>
+      <pre style={{
+        margin: 0, padding: 12, borderRadius: 10, background: '#2b2722', color: '#f3ead7',
+        fontSize: 12, lineHeight: 1.55, overflowX: 'auto', whiteSpace: 'pre',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+      }}>{sql}</pre>
+    </div>
+  )
+}
+
+function DbGuideCard() {
+  const [open, setOpen] = useState(false)
+  return (
+    <Card style={{ marginBottom: 0, overflow: 'hidden' }}>
+      <div
+        onClick={() => setOpen((v) => !v)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}
+      >
+        <Database size={18} color="var(--c-gold)" />
+        <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--c-p800)' }}>数据库操作指南（超级管理员）</span>
+        <ChevronDown size={18} color="var(--c-p500)" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+      </div>
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, color: 'var(--c-p500)', marginBottom: 12, lineHeight: 1.6 }}>
+            超级管理员（super_admin）只能通过在 Supabase SQL Editor 手动执行以下指令设置，UI 无法创建或修改。
+            在「用户权限管理」里你只能把成员提升为「管理员」（admin），不能提升为超级管理员。
+          </div>
+          <SqlBlock title="① 设为超级管理员" sql={SQL_SET_SUPER} />
+          <SqlBlock title="② 取消超级管理员" sql={SQL_REMOVE_SUPER} />
+          <SqlBlock title="③ （可选）数据库直接提升管理员" sql={SQL_PROMOTE_ADMIN} />
+        </div>
+      )}
+    </Card>
   )
 }
