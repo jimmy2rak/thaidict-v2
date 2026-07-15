@@ -26,17 +26,30 @@ export default function ApprovalCenterSection({ onClose }) {
   const onApprove = async (id) => {
     const a = items.find((x) => x.id === id)
     if (!a) return
-    await approveApproval(id, userId)
+    const approved = await approveApproval(id, userId)
+    if (!approved) {
+      toast('审批状态更新失败')
+      return
+    }
     // 批准后：写入社区词库（贡献记录）+ 按标准格式自动加入主词典（需求 #3）
+    let commErr = null
+    let dictErr = null
     if (a.type === 'word') {
       const { zh_hint, ...entry } = a.payload || {}
       if (entry.word) {
-        await saveCommunityWord(entry, a.requested_by, zh_hint || '')
-        await addDictionaryWord(entry)
+        const savedComm = await saveCommunityWord(entry, a.requested_by, zh_hint || '')
+        if (!savedComm) commErr = '社区词记录写入失败（字段不匹配）'
+        const savedDict = await addDictionaryWord(entry)
+        if (!savedDict) dictErr = '主词典写入失败（权限或表结构问题）'
       }
     }
-    // 后续可在此加入腾讯翻译君 API 校验 AI 词条是否与实际一致
-    toast('已批准入库')
+    if (dictErr) {
+      toast(`批准失败：${dictErr}`)
+    } else if (commErr) {
+      toast(`已批准入库主词典，但${commErr}`)
+    } else {
+      toast('已批准入库')
+    }
     setDetail(null)
     load()
   }

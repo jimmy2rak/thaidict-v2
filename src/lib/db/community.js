@@ -14,12 +14,16 @@ export async function saveCommunityWord(entry, userId, zhHint) {
     return row
   }
   if (!supabase) return null
+  // 真实库 community_words 列：word, senses, zh_hint, source, created_at。
+  // 只提交这几列，避免传入 entry 里的 romanization/synonyms/antonyms/learner_associations 等触发 400。
+  const row = {
+    word: (entry.word || '').toLowerCase(),
+    senses: entry.senses || [],
+    zh_hint: zhHint || '',
+    source: entry.source || 'community',
+  }
   const { data, error } = await safeQuery(
-    supabase
-      .from('community_words')
-      .upsert({ ...entry, word: (entry.word || '').toLowerCase() }, { onConflict: 'word' })
-      .select()
-      .single()
+    supabase.from('community_words').upsert(row, { onConflict: 'word' }).select().single()
   )
   if (error) {
     console.error('[saveCommunityWord]', error.message)

@@ -174,13 +174,17 @@ export default function WordDetailPage({ word }) {
             {s.examples?.map((ex, j) => {
               const exThai = ex.th ?? ex.thai ?? ''
               return (
-                <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--c-p600)', marginTop: 4, fontFamily: 'var(--th-font)' }}>
-                  <ThaiSentence text={exThai} type="sentence" style={{ fontFamily: 'var(--th-font)' }} />
-                  <span style={{ color: 'var(--c-p500)', marginLeft: 2 }}>{ex.zh}</span>
+                <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--c-p600)', marginTop: 8, fontFamily: 'var(--th-font)' }}>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ lineHeight: 1.5, wordBreak: 'break-word' }}>
+                      <ThaiSentence text={exThai} type="sentence" style={{ fontFamily: 'var(--th-font)' }} />
+                    </div>
+                    <div style={{ color: 'var(--c-p500)', lineHeight: 1.5, wordBreak: 'break-word', fontFamily: 'var(--zh-font)' }}>{ex.zh}</div>
+                  </div>
                   <button
                     onClick={() => speak(exThai, { rate })}
                     title="朗读例句"
-                    style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, background: 'var(--c-p100)', border: 'none', color: 'var(--c-p700)', cursor: 'pointer', flexShrink: 0 }}
+                    style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, background: 'var(--c-p100)', border: 'none', color: 'var(--c-p700)', cursor: 'pointer' }}
                   >
                     <Volume2 size={15} />
                   </button>
