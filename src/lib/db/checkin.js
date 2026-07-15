@@ -226,9 +226,13 @@ export async function getMonthlyCheckinStreak(userId) {
     return dates.size
   }
   if (!supabase || !userId) return 0
-  const ym = getTodayCST().slice(0, 7)
+  const ym = getTodayCST().slice(0, 7) // 'YYYY-MM'
+  const [y, m] = ym.split('-').map(Number)
+  const monthStart = ym + '-01'
+  // 下月首日（用于 lt 半开区间）；date 列为 date 类型，like 运算符非法会导致 400，改用范围查询
+  const nextMonth = m === 12 ? y + 1 + '-01-01' : y + '-' + String(m + 1).padStart(2, '0') + '-01'
   const { data } = await safeQuery(
-    supabase.from('user_checkin_completions').select('date').eq('user_id', userId).like('date', ym + '%')
+    supabase.from('user_checkin_completions').select('date').eq('user_id', userId).gte('date', monthStart).lt('date', nextMonth)
   )
   return new Set((data || []).map((r) => r.date)).size
 }

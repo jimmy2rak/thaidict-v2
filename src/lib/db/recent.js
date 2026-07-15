@@ -19,6 +19,7 @@ export async function recordWordLookup(userId, word) {
     return list
   }
   if (!supabase || !userId || !word) return null
+  const now = new Date().toISOString()
   const { data: existing } = await safeQuery(
     supabase.from('user_recent_words').select('lookup_count').eq('user_id', userId).eq('word', word).maybeSingle()
   )
@@ -26,16 +27,30 @@ export async function recordWordLookup(userId, word) {
     await safeQuery(
       supabase
         .from('user_recent_words')
-        .update({ looked_up_at: new Date().toISOString(), lookup_count: (existing.lookup_count || 0) + 1 })
+        .update({ looked_up_at: now, lookup_count: (existing.lookup_count || 0) + 1 })
         .eq('user_id', userId)
         .eq('word', word)
     )
   } else {
-    await safeQuery(
+    const { error } = await safeQuery(
       supabase
         .from('user_recent_words')
-        .insert({ user_id: userId, word, looked_up_at: new Date().toISOString(), lookup_count: 1 })
+        .insert({ user_id: userId, word, looked_up_at: now, lookup_count: 1 })
     )
+    // 并发查同词（StrictMode 双重 effect / 快速点击）导致唯一约束冲突(409)：
+    // 已存在则回退为「读取当前计数再 +1」的 update，避免红字报错。
+    if (error && (error.code === '23505' || /duplicate|conflict/i.test(error.message || ''))) {
+      const { data: cur } = await safeQuery(
+        supabase.from('user_recent_words').select('lookup_count').eq('user_id', userId).eq('word', word).maybeSingle()
+      )
+      await safeQuery(
+        supabase
+          .from('user_recent_words')
+          .update({ looked_up_at: now, lookup_count: (cur?.lookup_count || 1) + 1 })
+          .eq('user_id', userId)
+          .eq('word', word)
+      )
+    }
   }
   return getUserRecentWords(userId)
 }
