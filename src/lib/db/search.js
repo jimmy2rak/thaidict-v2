@@ -197,8 +197,9 @@ export async function addDictionaryWord(entry) {
     return row
   }
   if (!supabase) return null
+  // onConflict:'word'——word 有唯一约束，重复审批同一词走更新而非报错。
   const { data, error } = await safeQuery(
-    supabase.from('dictionary').upsert(row).select().single()
+    supabase.from('dictionary').upsert(row, { onConflict: 'word' }).select().single()
   )
   if (error) {
     console.error('[addDictionaryWord]', error.message)
@@ -207,6 +208,8 @@ export async function addDictionaryWord(entry) {
   return data
 }
 
+// ⚠️ dictionary 基表：sense_count 是【生成列】(不可写)，且【无】freq_ttc 列(词频由
+// dictionary_full 视图从 word_freqs 映射)。写这两列都会 400，务必排除。
 function normalizeDictionaryRow(entry) {
   const senses = Array.isArray(entry.senses) ? entry.senses : []
   return {
@@ -216,8 +219,6 @@ function normalizeDictionaryRow(entry) {
     synonyms: entry.synonyms || [],
     antonyms: entry.antonyms || [],
     learner_associations: entry.learner_associations || [],
-    sense_count: senses.length,
     enrichment_status: 'enriched',
-    freq_ttc: entry.freq_ttc || 0,
   }
 }

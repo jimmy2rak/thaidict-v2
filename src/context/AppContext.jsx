@@ -49,7 +49,22 @@ export function AppProvider({ children }) {
   const [dbWordData, setDbWordData] = useState({})
   // 登录页 / 重置密码切换
   const [showReset, setShowReset] = useState(false)
-  const [generatedWords, setGeneratedWords] = useState({})
+  // AI 生成的词条先缓存在【用户本地】（localStorage），审批通过入 dictionary_full 后可全局查到。
+  // 本地缓存让生成者在审批前刷新页面仍能查到自己刚加的词。
+  const [generatedWords, setGeneratedWords] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('thaidict-generated-words') || '{}')
+    } catch {
+      return {}
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('thaidict-generated-words', JSON.stringify(generatedWords))
+    } catch {
+      /* 配额满等异常忽略 */
+    }
+  }, [generatedWords])
   const pendingLookups = useRef(new Set())
 
   // ---------- 主题 ----------
@@ -317,16 +332,21 @@ export function AppProvider({ children }) {
     async (word, zhHint) => {
       const userApi = await getActiveAiApi(userId)
       const { data, error } = await callAiProxy({ word, zhHint }, userApi)
-      if (error || !data) {
-        toast('生成失败，请重试')
+      if (error || !data || data.parseError || !data.word) {
+        console.error('[handleGenerated]', error || data)
+        toast(error ? `生成失败：${error}` : '生成失败，请重试')
         return
       }
+      // 先缓存在用户本地（localStorage），生成者立即可查
       const transformed = transformCommunityWord(data)
       setGeneratedWords((prev) => ({ ...prev, [word]: transformed }))
+      // 提交待审批：超管通过后写入 dictionary → dictionary_full，全局可查
       try {
         await createPendingApproval({ type: 'word', payload: { ...data, zh_hint: zhHint }, requestedBy: userId })
+        toast('已生成，等待管理员审核后进入词典')
       } catch (e) {
         console.error('[createPendingApproval]', e)
+        toast('已生成（本地），但提交审核失败')
       }
       setUnknownWord(null)
       navigateTo({ type: 'detail', word })

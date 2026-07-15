@@ -67,7 +67,8 @@ function normalizeRel(arr) {
   if (!Array.isArray(arr)) return []
   return arr.map((x) => {
     if (typeof x === 'string') return { word: x, meaning: '' }
-    if (x && x.word) return { word: x.word, meaning: x.meaning || '' }
+    // AI 返回可能用 meaning 或 zh 承载中文
+    if (x && x.word) return { word: x.word, meaning: x.meaning || x.zh || '' }
     return { word: String(x), meaning: '' }
   })
 }
