@@ -103,10 +103,9 @@ export default function ThaiSentence({
     }
   }, [text, type, presetTokens, dictVersion])
 
-  // 点击单词 → 弹气泡 + 查词
+  // 点击单词 → 仅弹气泡 + 查词（跳转详情交给气泡内的主词点击，避免一点就跳页）
   const handleWordClick = useCallback(
     (word, e) => {
-      onWordClick?.(word)
       const x = e.clientX ?? 80
       const y = (e.clientY ?? 120) + 12
       setBubble({ word, x, y, status: 'loading', meanings: [] })
@@ -123,7 +122,7 @@ export default function ThaiSentence({
           setBubble((b) => (b && b.word === word ? { ...b, status: 'empty', meanings: [] } : b))
         )
     },
-    [lookup, onWordClick]
+    [lookup]
   )
 
   if (loading) {
