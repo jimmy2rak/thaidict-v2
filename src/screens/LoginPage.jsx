@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Mail, Lock, KeyRound, Send, Github, ArrowLeft } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import { isSupabaseConfigured } from '../lib/supabase.js'
-import { WatArunLogo } from '../icons/CulturalIcons.jsx'
+import { MainLogo } from '../icons/CulturalIcons.jsx'
 import {
   signInWithEmail,
   signUpWithEmail,
@@ -138,7 +138,7 @@ export default function LoginPage({ onForgot }) {
       {/* 品牌头部 */}
       <div style={{ textAlign: 'center', marginBottom: 30 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-          <WatArunLogo size={44} />
+          <MainLogo size={52} />
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--c-p800)' }}>词笺</div>
             <div style={{ fontSize: 12, color: 'var(--c-p500)' }}>中泰双语智能词典</div>

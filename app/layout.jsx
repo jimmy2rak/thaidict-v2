@@ -30,7 +30,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="zh-CN">
       <head>
-        <link rel="icon" href="/icons/icon-192.svg" type="image/svg+xml" />
+        <link rel="icon" href="/icons/icon-192.svg" type="image/svg+xml" sizes="any" />
+        <link rel="apple-touch-icon" href="/icons/icon-512.svg" />
         {/* Google Fonts：中文 Noto Sans/Serif SC，泰文 Noto Sans Thai / Sarabun / Charm */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

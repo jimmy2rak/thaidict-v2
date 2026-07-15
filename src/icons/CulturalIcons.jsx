@@ -13,6 +13,19 @@ export function WatArunLogo({ size = 32, color = 'var(--c-gold)' }) {
   )
 }
 
+// 主品牌 Logo（中泰词典圆形徽标 + 泰文标题），统一用于登录页与各处主 logo。
+export function MainLogo({ size = 48, style }) {
+  return (
+    <img
+      src="/icons/logo.svg"
+      width={size}
+      height={size}
+      alt="词笺 — 中泰双语智能词典"
+      style={{ display: 'block', ...style }}
+    />
+  )
+}
+
 export function PalmLeafBook({ size = 22, color = 'var(--c-teal)' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6">
