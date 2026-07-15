@@ -35,6 +35,8 @@ export function AppProvider({ children }) {
   // ---------- 导航 ----------
   const [page, setPageState] = useState('home')
   const [visitedPages, setVisitedPages] = useState(() => new Set(['home']))
+  // 每次切换底部 tab 自增，用于强制重挂载活动页，重置页内深层级导航状态（如 WordBookPage.detail）
+  const [pageEpoch, setPageEpoch] = useState(0)
   const [navStack, setNavStack] = useState([])
   const [navForward, setNavForward] = useState([])
   const [detailWord, setDetailWord] = useState(null)
@@ -232,6 +234,7 @@ export function AppProvider({ children }) {
     (p) => {
       setPageState(p)
       setVisitedPages((v) => new Set(v).add(p))
+      setPageEpoch((e) => e + 1)
       resetNav()
     },
     [resetNav]
@@ -365,6 +368,7 @@ export function AppProvider({ children }) {
     // nav
     page,
     setPage,
+    pageEpoch,
     visitedPages,
     navStack,
     navForward,

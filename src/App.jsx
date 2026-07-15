@@ -19,6 +19,14 @@ const TABS = [
   { key: 'me', label: '我的', icon: User, color: 'var(--c-rose)' },
 ]
 
+// 页面组件映射，配合 app.pageEpoch 实现切 tab 时整页重挂载，重置页内深层级状态
+const PAGES = {
+  home: HomePage,
+  words: WordBookPage,
+  learn: LearnPage,
+  me: ProfilePage,
+}
+
 function TabBar({ page, onChange }) {
   return (
     <div
@@ -110,26 +118,15 @@ export default function App() {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', overflow: 'hidden' }}>
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        {app.visitedPages.has('home') && (
-          <div key="home" style={{ display: app.page === 'home' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
-            <HomePage />
-          </div>
-        )}
-        {app.visitedPages.has('words') && (
-          <div key="words" style={{ display: app.page === 'words' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
-            <WordBookPage />
-          </div>
-        )}
-        {app.visitedPages.has('learn') && (
-          <div key="learn" style={{ display: app.page === 'learn' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
-            <LearnPage />
-          </div>
-        )}
-        {app.visitedPages.has('me') && (
-          <div key="me" style={{ display: app.page === 'me' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
-            <ProfilePage />
-          </div>
-        )}
+        {(() => {
+          const ActivePage = PAGES[app.page] || HomePage
+          // key 随 page + pageEpoch 变化 → 每次切 tab 整页重挂载，WordBookPage 等页内 detail 状态被重置到一级
+          return (
+            <div key={`${app.page}-${app.pageEpoch}`} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <ActivePage />
+            </div>
+          )
+        })()}
 
         {/* Overlays */}
         {app.detailWord && (
