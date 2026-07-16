@@ -9,8 +9,10 @@ const PY_SERVICE_URL = process.env.THAI_SEGMENT_SERVICE_URL || ''
 async function callPythonService(text) {
   if (!PY_SERVICE_URL) return null
   // 兼容 /legacy 返回 { data: [...] } 和 /segment 返回 { tokens: [...] }
-  const url = PY_SERVICE_URL.replace(/\/$/, '')
-  const legacyUrl = url.endsWith('/legacy') ? url : `${url}/legacy`
+  // URL 约定：填「服务根地址」(如 https://thai.example.com) 最省心；
+  // 若已填了完整端点(/legacy|/segment|/batch)则直接使用，避免叠路径
+  const base = PY_SERVICE_URL.replace(/\/$/, '')
+  const legacyUrl = /\/(legacy|segment|batch)$/.test(base) ? base : `${base}/legacy`
   try {
     const res = await fetch(legacyUrl, {
       method: 'POST',

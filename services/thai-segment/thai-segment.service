@@ -1,0 +1,17 @@
+[Unit]
+Description=Thai Segment Service (PyThaiNLP newmm)
+After=network.target
+
+[Service]
+Type=simple
+User=www
+Group=www
+WorkingDirectory=/www/wwwroot/thaidict-v2/services/thai-segment
+ExecStart=/www/wwwroot/thaidict-v2/services/thai-segment/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+# 如需自定义词典：Environment=THAI_CUSTOM_DICT=/www/wwwroot/thai-segment/custom.txt
+
+[Install]
+WantedBy=multi-user.target
