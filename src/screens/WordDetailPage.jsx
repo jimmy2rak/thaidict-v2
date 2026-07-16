@@ -147,7 +147,7 @@ export default function WordDetailPage({ word }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 32, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)', lineHeight: 1.3 }}>
-                {data.word}
+                <ThaiSentence text={data.word} onWordClick={handleWordTap} style={{ fontFamily: 'var(--th-font)' }} />
               </div>
               {data.romanization && (
                 <div style={{ fontSize: 15, color: 'var(--c-p500)', marginTop: 4 }}>{data.romanization}</div>
@@ -321,13 +321,14 @@ const relStyle = (c) => ({
 })
 // 近反义词/学习者建议单词：查到释义时附加中文括号（多义用分号分隔），查不到则不显示括号（需求 #5）
 function RelWord({ word, color, meaning, onClick }) {
+  // 用 ThaiSentence 渲染泰语词，自动分词（复合词细分）+ 点击查词/跳转
   return (
-    <button onClick={onClick} style={relStyle(color)}>
-      <span style={{ fontFamily: 'var(--th-font)' }}>{word}</span>
+    <span style={relStyle(color)}>
+      <ThaiSentence text={word} onWordClick={onClick} style={{ fontFamily: 'var(--th-font)', fontSize: 13 }} />
       {meaning && meaning.length > 0 && (
         <span style={{ fontFamily: 'var(--zh-font)', fontSize: 12 }}>（{meaning.join('；')}）</span>
       )}
-    </button>
+    </span>
   )
 }
 // 词典信息：左右两栏的 label/value 行

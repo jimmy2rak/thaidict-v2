@@ -50,7 +50,7 @@ export default function WordCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--th-font)', color: 'var(--c-p800)', lineHeight: 1.35 }}>
-            <ThaiSentence text={word} type="word" style={{ fontSize: 18, fontWeight: 700 }} />
+            <ThaiSentence text={word} style={{ fontSize: 18, fontWeight: 700 }} />
           </div>
           {romanization && <div style={{ fontSize: 12, color: 'var(--c-p500)', marginTop: 1 }}>{romanization}</div>}
           {meaning && <div style={{ fontSize: 13, color: 'var(--c-p600)', marginTop: 2 }}>{meaning}</div>}

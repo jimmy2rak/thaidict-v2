@@ -2,12 +2,15 @@
 # ----------------------------------------------------
 # 提供：
 #   load_custom_map(path) -> {短语: [分词1, 分词2, ...]}
-#   expand_tokens(tokens, custom_map) -> 命中短语则展开
 #   segment(text, engine, custom_map) -> [{text, type}]（已展开）
+#   expand_tokens(tokens, custom_map) -> 命中短语则递归展开
 #
 # 自定义词典格式（TSV，每行一个映射，# 开头为注释）：
 #   完整短语<TAB>分词1|分词2|...
 # 例：เข้าตามตรอกออกตามประตู	เข้าตามตรอก|ออกตามประตู
+#
+# 递归细分：展开后的每个小句会再走一次 newmm，
+# 例如 เข้าตามตรอก -> เข้า|ตาม|ตรอก，确保粒度足够细。
 
 import os
 from typing import Dict, List, Optional
@@ -35,24 +38,9 @@ def load_custom_map(path: str) -> Dict[str, List[str]]:
     return m
 
 
-def expand_tokens(tokens: List[dict], custom_map: Dict[str, List[str]]) -> List[dict]:
-    """若某 token 的 text 精确命中 custom_map 的键，则展开为多个 word token。"""
-    if not custom_map:
-        return tokens
-    out: List[dict] = []
-    for t in tokens:
-        txt = (t.get("text") or "")
-        if txt in custom_map:
-            for p in custom_map[txt]:
-                out.append({"text": p, "type": "word"})
-        else:
-            out.append(t)
-    return out
-
-
 def segment(text: str, engine: str = "newmm",
             custom_map: Optional[Dict[str, List[str]]] = None) -> List[dict]:
-    """newmm 分词 + 自定义映射展开。返回 [{text, type}]。"""
+    """newmm 分词 + 自定义映射递归展开。返回 [{text, type}]。"""
     from pythainlp.tokenize import word_tokenize
 
     if not text or not text.strip():
@@ -69,3 +57,21 @@ def segment(text: str, engine: str = "newmm",
     if custom_map:
         tokens = expand_tokens(tokens, custom_map)
     return tokens
+
+
+def expand_tokens(tokens: List[dict], custom_map: Dict[str, List[str]]) -> List[dict]:
+    """若某 token 的 text 精确命中 custom_map 的键，
+    则对该键对应的每个小句递归调用 segment（小句本身会再被 newmm 细分）。"""
+    if not custom_map:
+        return tokens
+    out: List[dict] = []
+    for t in tokens:
+        txt = (t.get("text") or "")
+        if txt in custom_map:
+            for part in custom_map[txt]:
+                # 递归：part 通常不是映射键，会被 newmm 正常细分；
+                # 若 part 也是键，则继续展开，直到无命中为止。
+                out.extend(segment(part, custom_map=custom_map))
+        else:
+            out.append(t)
+    return out
