@@ -39,12 +39,16 @@ def load_custom_map(path: str) -> Dict[str, List[str]]:
 
 
 def segment(text: str, engine: str = "newmm",
-            custom_map: Optional[Dict[str, List[str]]] = None) -> List[dict]:
+            custom_map: Optional[Dict[str, List[str]]] = None,
+            _depth: int = 0) -> List[dict]:
     """newmm 分词 + 自定义映射递归展开。返回 [{text, type}]。"""
     from pythainlp.tokenize import word_tokenize
 
     if not text or not text.strip():
         return []
+    # 深度保护：自定义词典若出现 A->B->A 循环，最多展开 10 层后停止
+    if _depth > 10:
+        return [{"text": text, "type": "word"}]
     words = word_tokenize(text, engine=engine)
     tokens: List[dict] = []
     for w in words:
@@ -55,11 +59,12 @@ def segment(text: str, engine: str = "newmm",
         else:
             tokens.append({"text": w, "type": "word"})
     if custom_map:
-        tokens = expand_tokens(tokens, custom_map)
+        tokens = expand_tokens(tokens, custom_map, _depth)
     return tokens
 
 
-def expand_tokens(tokens: List[dict], custom_map: Dict[str, List[str]]) -> List[dict]:
+def expand_tokens(tokens: List[dict], custom_map: Dict[str, List[str]],
+                  _depth: int = 0) -> List[dict]:
     """若某 token 的 text 精确命中 custom_map 的键，
     则对该键对应的每个小句递归调用 segment（小句本身会再被 newmm 细分）。"""
     if not custom_map:
@@ -67,11 +72,11 @@ def expand_tokens(tokens: List[dict], custom_map: Dict[str, List[str]]) -> List[
     out: List[dict] = []
     for t in tokens:
         txt = (t.get("text") or "")
-        if txt in custom_map:
+        if txt in custom_map and _depth < 10:
             for part in custom_map[txt]:
                 # 递归：part 通常不是映射键，会被 newmm 正常细分；
-                # 若 part 也是键，则继续展开，直到无命中为止。
-                out.extend(segment(part, custom_map=custom_map))
+                # 若 part 也是键，则继续展开（带深度保护，防止循环）。
+                out.extend(segment(part, custom_map=custom_map, _depth=_depth + 1))
         else:
             out.append(t)
     return out

@@ -1,6 +1,8 @@
 services:
   thai-segment:
-    build: .
+    build:
+      context: ../..
+      dockerfile: services/thai-segment/Dockerfile
     image: thai-segment:latest
     container_name: thai-segment
     restart: unless-stopped

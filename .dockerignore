@@ -1,0 +1,10 @@
+# 仓库根 .dockerignore —— 让 thai-segment 构建上下文保持精简
+node_modules
+.next
+.next-dev
+.git
+.workbuddy
+**/node_modules
+*.log
+npm-debug.log*
+.DS_Store
