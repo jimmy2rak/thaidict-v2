@@ -23,7 +23,28 @@ from seg_utils import load_custom_map, segment as _seg
 app = FastAPI(title="Thai Segment Service", version="1.1.0")
 
 # ---------- 配置 ----------
-CUSTOM_DICT_PATH = os.getenv("THAI_CUSTOM_DICT", "/app/custom_dict.txt")
+def _resolve_dict_path():
+    """多候选路径探测：兼容旧布局（custom_dict.txt 与 main.py 同目录）
+    与新仓库布局（COPY . /app 后落在 /app/services/thai-segment/custom_dict.txt）。"""
+    env = os.getenv("THAI_CUSTOM_DICT")
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = []
+    if env:
+        candidates.append(env)
+    candidates += [
+        os.path.join(here, "custom_dict.txt"),
+        os.path.join(here, "..", "services", "thai-segment", "custom_dict.txt"),
+        "/app/services/thai-segment/custom_dict.txt",
+        "/app/custom_dict.txt",
+    ]
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return os.path.abspath(c)
+    # 全都不存在时回退到首个候选（load 会安全返回空 dict）
+    return os.path.abspath(candidates[0])
+
+
+CUSTOM_DICT_PATH = _resolve_dict_path()
 CUSTOM_MAP = load_custom_map(CUSTOM_DICT_PATH)
 _dict_loaded_at = time.time()
 DICT_RELOAD_MS = int(os.getenv("DICT_RELOAD_MS", "3600000"))  # 1h 自动重载
@@ -55,11 +76,13 @@ def _segment_safe(text: str, engine: str = "newmm"):
 # ---------- 路由 ----------
 @app.get("/health")
 def health():
+    import os as _os
     return {
         "ok": True,
         "pythainlp": True,
         "status": "ok",
         "custom_dict": CUSTOM_DICT_PATH,
+        "custom_dict_exists": _os.path.isfile(CUSTOM_DICT_PATH),
         "custom_words": len(CUSTOM_MAP),
     }
 
