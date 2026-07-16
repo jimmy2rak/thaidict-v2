@@ -43,9 +43,12 @@ def load_custom_map(path: str) -> Dict[str, List[str]]:
 
 
 def load_wordlist_from_supabase(supabase, table: str = "dictionary",
-                                column: str = "word", batch: int = 2000) -> Set[str]:
+                                column: str = "word", batch: int = 1000) -> Set[str]:
     """从我们自己的泰语词库拉取全部词，构建分词词集。
-    服务角色可直读 dictionary 基表；词库很大（6 万+），分页拉取。"""
+    服务角色可直读 dictionary 基表；词库很大（6 万+），分页拉取。
+    注意：Supabase REST 默认单次最多返回 1000 行（db-max-rows），故 batch<=1000，
+    并以「返回空」判定结束——绝不能用 batch>1000 + 「len<batch 即末页」，否则
+    第一页被截成 1000 行就误判结束，只拉到约千词。"""
     words: Set[str] = set()
     page = 0
     while True:
@@ -67,6 +70,7 @@ def load_wordlist_from_supabase(supabase, table: str = "dictionary",
             # 只收不含空格、长度合理的词条，避免脏数据
             if w and " " not in w and len(w) <= 50:
                 words.add(w)
+        # batch<=1000（不超过 db-max-rows），返回不足一页即末尾
         if len(data) < batch:
             break
         page += 1

@@ -32,26 +32,29 @@ from seg_utils import save_wordlist_to_file  # noqa: E402
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO_ROOT, "services", "thai-segment", "wordlist.txt")
 
-BATCH = 2000
+# Supabase REST 默认单次最多返回 1000 行（db-max-rows）。用 Range 头分页，
+# 每页 <=1000，靠「返回 0 行」判定结束，绝不能用 limit=2000+「len<2000 即末页」
+# ——那样第一页被截成 1000 行就误判结束（这正是只拉到 987 词的根因）。
+PAGE = 1000
 
 
 def fetch_table(base_url: str, key: str, table: str, column: str) -> set:
-    """用 Supabase REST 接口分页拉取某列全部值，返回词集。"""
+    """用 Supabase REST 接口分页拉取某列全部值，返回词集。
+    用 Range 头分页，直到某页返回 0 行才停止。"""
     words: set = set()
-    page = 0
+    offset = 0
     while True:
-        url = (
-            f"{base_url}/rest/v1/{table}"
-            f"?select={column}&order={column}.asc.nullsfirst"
-            f"&limit={BATCH}&offset={page * BATCH}"
-        )
+        url = f"{base_url}/rest/v1/{table}?select={column}&order={column}.asc"
         req = urllib.request.Request(url, headers={
             "apikey": key,
             "Authorization": f"Bearer {key}",
             "Accept": "application/json",
+            # Range 分页（PostgREST 官方分页方式），闭区间
+            "Range-Unit": "items",
+            "Range": f"{offset}-{offset + PAGE - 1}",
         })
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with urllib.request.urlopen(req, timeout=120) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", "ignore")
@@ -67,9 +70,12 @@ def fetch_table(base_url: str, key: str, table: str, column: str) -> set:
             # 只收不含空格、长度合理的词条，避免脏数据
             if w and " " not in w and len(w) <= 50:
                 words.add(w)
-        if len(data) < BATCH:
+        n = len(data)
+        print(f"[generate_wordlist]   {table}: +{n}（offset {offset}，累计词 {len(words)}）")
+        # 返回不足一页说明已到末尾
+        if n < PAGE:
             break
-        page += 1
+        offset += n
     return words
 
 
