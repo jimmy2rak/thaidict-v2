@@ -173,14 +173,15 @@ def segment(text: str, engine: str = "newmm",
         tokens = _maybe_break_idiom(tokens, word_set)
     # 自定义俗语精确映射（非组合型成语的最终兜底）
     if custom_map:
-        tokens = expand_tokens(tokens, custom_map, _depth)
+        tokens = expand_tokens(tokens, custom_map, word_set=word_set, _depth=_depth)
     return tokens
 
 
 def expand_tokens(tokens: List[dict], custom_map: Dict[str, List[str]],
+                  word_set: Optional[Set[str]] = None,
                   _depth: int = 0) -> List[dict]:
     """若某 token 的 text 精确命中 custom_map 的键，
-    则对该键对应的每个小句递归调用 segment（小句本身会再被 newmm 细分）。"""
+    则对该键对应的每个小句递归调用 segment（小句本身会再被 newmm 细分，并保留词库兜底）。"""
     if not custom_map:
         return tokens
     out: List[dict] = []
@@ -188,7 +189,7 @@ def expand_tokens(tokens: List[dict], custom_map: Dict[str, List[str]],
         txt = (t.get("text") or "")
         if txt in custom_map and _depth < 10:
             for part in custom_map[txt]:
-                out.extend(segment(part, custom_map=custom_map, _depth=_depth + 1))
+                out.extend(segment(part, custom_map=custom_map, word_set=word_set, _depth=_depth + 1))
         else:
             out.append(t)
     return out

@@ -65,12 +65,16 @@ def log(msg: str):
     print(f"[{ts}] {msg}", flush=True)
 
 
-def segment_text(text: str, custom_map=None) -> List[Dict[str, str]]:
+def segment_text(text: str, custom_map=None, forbid_texts=None) -> List[Dict[str, str]]:
     """返回前端 ThaiSentence 兼容的 token 数组：[{text, type}]。
-    复用 seg_utils.segment：newmm + 词库长词兜底（成语自动拆词）+ 自定义映射递归展开。"""
+    复用 seg_utils.segment：newmm + 词库长词兜底（成语自动拆词）+ 自定义映射递归展开。
+    可选 forbid_texts：把指定文本从词库中临时排除，用于避免把整句/整词当成一个 atom 而不拆分。"""
     if not text or not text.strip():
         return []
-    return _seg(text, engine=ENGINE, custom_map=custom_map, word_set=WORDSET)
+    word_set = WORDSET
+    if forbid_texts and word_set:
+        word_set = word_set - set(forbid_texts)
+    return _seg(text, engine=ENGINE, custom_map=custom_map, word_set=word_set)
 
 
 def update_dictionary_examples(supabase: Client, table_name: str = "dictionary"):
@@ -199,7 +203,7 @@ def update_sentences(supabase: Client):
             updated += 1
             continue
 
-        seg = segment_text(text, CUSTOM_MAP)
+        seg = segment_text(text, CUSTOM_MAP, forbid_texts={text})
         if not seg:
             skipped += 1
             continue
