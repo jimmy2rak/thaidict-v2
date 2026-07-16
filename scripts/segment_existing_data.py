@@ -14,9 +14,11 @@ segment_existing_data.py
 
 可选：
   export BATCH_SIZE=100          # 每批处理条数，默认 100
-  export ONLY_EMPTY=1            # 只处理 segmented 为空的数据
+  export ONLY_EMPTY=1            # 只处理 segmented 为空的数据（默认开）
+  export ONLY_SINGLE=1           # 只重跑 segmented 为单 token 的行（如俗语被当成一个词）
   export DRY_RUN=1               # 只打印，不写入
   export THAI_SEGMENT_ENGINE=newmm # newmm | mm | dict
+注：自定义俗语映射见 services/thai-segment/custom_dict.txt，自动生效。
 
 用法：
   python scripts/segment_existing_data.py
@@ -35,11 +37,22 @@ from pythainlp.tokenize import word_tokenize
 # Supabase Python client
 from supabase import create_client, Client
 
+# 复用服务端分词工具（自定义俗语映射单一数据源）
+import sys as _sys
+_sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "thai-segment"))
+from seg_utils import load_custom_map, expand_tokens  # noqa: E402
+
+CUSTOM_DICT_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "services", "thai-segment", "custom_dict.txt"
+)
+CUSTOM_MAP = load_custom_map(CUSTOM_DICT_PATH)
+
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100"))
 ONLY_EMPTY = os.getenv("ONLY_EMPTY", "1") == "1"
+ONLY_SINGLE = os.getenv("ONLY_SINGLE", "0") == "1"  # 只重跑 segmented 为单 token 的行
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 ENGINE = os.getenv("THAI_SEGMENT_ENGINE", "newmm")
 
@@ -49,7 +62,7 @@ def log(msg: str):
     print(f"[{ts}] {msg}", flush=True)
 
 
-def segment_text(text: str) -> List[Dict[str, str]]:
+def segment_text(text: str, custom_map=None) -> List[Dict[str, str]]:
     """返回前端 ThaiSentence 兼容的 token 数组：[{text, type}]"""
     if not text or not text.strip():
         return []
@@ -64,6 +77,8 @@ def segment_text(text: str) -> List[Dict[str, str]]:
             tokens.append({"text": w, "type": "space"})
         else:
             tokens.append({"text": w, "type": "word"})
+    if custom_map:
+        tokens = expand_tokens(tokens, custom_map)
     return tokens
 
 
@@ -106,13 +121,19 @@ def update_dictionary_examples(supabase: Client, table_name: str = "dictionary")
             for ex in examples:
                 th = ex.get("th") or ex.get("thai") or ex.get("text") or ""
                 existing_seg = ex.get("segmented")
-                if ONLY_EMPTY and isinstance(existing_seg, list) and len(existing_seg) > 0:
+                is_single = isinstance(existing_seg, list) and len(existing_seg) == 1
+                if ONLY_SINGLE:
+                    # 只重跑单 token 的例句（如俗语被当成一个词）
+                    if not is_single:
+                        new_examples.append(ex)
+                        continue
+                elif ONLY_EMPTY and isinstance(existing_seg, list) and len(existing_seg) > 0:
                     new_examples.append(ex)
                     continue
                 if not th.strip():
                     new_examples.append(ex)
                     continue
-                seg = segment_text(th)
+                seg = segment_text(th, CUSTOM_MAP)
                 if seg:
                     new_ex = dict(ex)
                     new_ex["segmented"] = seg
@@ -150,7 +171,7 @@ def update_sentences(supabase: Client):
     log("开始读取 sentences 表...")
     rows = []
     page = 0
-    query = supabase.table("sentences").select("id, text")
+    query = supabase.table("sentences").select("id, text, segmented")
     while True:
         resp = query.range(page * BATCH_SIZE, (page + 1) * BATCH_SIZE - 1).execute()
         data = resp.data or []
@@ -170,12 +191,18 @@ def update_sentences(supabase: Client):
             skipped += 1
             continue
 
+        existing_seg = row.get("segmented")
+        is_single = isinstance(existing_seg, list) and len(existing_seg) == 1
+        if ONLY_SINGLE and not is_single:
+            skipped += 1
+            continue
+
         if DRY_RUN:
             log(f"[DRY_RUN] 将更新 sentences id={row['id']}")
             updated += 1
             continue
 
-        seg = segment_text(text)
+        seg = segment_text(text, CUSTOM_MAP)
         if not seg:
             skipped += 1
             continue
@@ -197,7 +224,7 @@ def main():
         log("错误：请设置 SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY 环境变量")
         sys.exit(1)
 
-    log(f"DRY_RUN={DRY_RUN}, ONLY_EMPTY={ONLY_EMPTY}, BATCH_SIZE={BATCH_SIZE}, ENGINE={ENGINE}")
+    log(f"DRY_RUN={DRY_RUN}, ONLY_EMPTY={ONLY_EMPTY}, ONLY_SINGLE={ONLY_SINGLE}, BATCH_SIZE={BATCH_SIZE}, ENGINE={ENGINE}, CUSTOM_DICT={CUSTOM_DICT_PATH}")
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     update_dictionary_examples(supabase, "dictionary")
