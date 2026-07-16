@@ -161,16 +161,20 @@ THAI_SEGMENT_SERVICE_URL=https://thai.yourdomain.com
 
 ## 第 7 步：回填旧数据（可选）
 
-在能联网 + 能访问 Supabase 的机器（可以是这台服务器，但需另装 Python+supabase 跑脚本；或用你本地电脑）执行：
+> 回填脚本 `scripts/segment_existing_data.py` **直接 `import pythainlp`**，所以跑它的环境必须装 pythainlp（容器本身不需要）。
+> **推荐在你本机（Mac/本地）跑**，不动服务器、不重复下载词典：
 
 ```bash
 cd thaidict-v2/scripts
+python3 -m venv venv && source venv/bin/activate
+pip install pythainlp supabase python-dotenv
 export SUPABASE_URL=https://xxxx.supabase.co
 export SUPABASE_SERVICE_ROLE_KEY=xxxx
-pip install supabase python-dotenv        # 仅回填脚本需要，容器本身不需要
-python segment_existing_data.py           # 先 DRY_RUN=1 看日志
-python segment_existing_data.py           # 确认无误后正式写回
+DRY_RUN=1 ONLY_EMPTY=1 python3 segment_existing_data.py   # 先只看日志，不写库
+ONLY_EMPTY=1 python3 segment_existing_data.py            # 确认无误后正式写回
 ```
+
+> 若坚持在 GCP 服务器跑：先确保 swap 生效，再 `pip install pythainlp supabase python-dotenv`（会再下载一次词典，约数百 MB）。
 
 ---
 
