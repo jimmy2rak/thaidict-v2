@@ -40,7 +40,7 @@ from supabase import create_client, Client
 # 复用服务端分词工具（自定义俗语映射 + 词库兜底拆词，单一数据源）
 import sys as _sys
 _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "thai-segment"))
-from seg_utils import load_custom_map, segment as _seg, load_wordlist_from_supabase  # noqa: E402
+from seg_utils import load_custom_map, segment as _seg, load_wordlist_from_supabase, load_wordlist_from_file  # noqa: E402
 
 CUSTOM_DICT_PATH = os.path.join(
     os.path.dirname(__file__), "..", "services", "thai-segment", "custom_dict.txt"
@@ -225,12 +225,19 @@ def main():
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     # 加载 6 万词泰语词库，用于成语/谚语兜底拆词（自动拆分所有短语）
+    # 优先读烤进镜像/仓库的 wordlist.txt（无需运行时 Supabase 凭据）；
+    # 文件不存在时回退到从 Supabase 拉取。
     global WORDSET
-    try:
-        WORDSET = load_wordlist_from_supabase(supabase)
-        log(f"词库加载完成：{len(WORDSET)} 词（用于成语兜底拆词）")
-    except Exception as e:
-        log(f"[WARN] 词库加载失败，成语将无法自动拆词：{e}")
+    WORDLIST_FILE = os.path.join(os.path.dirname(__file__), "..", "services", "thai-segment", "wordlist.txt")
+    WORDSET = load_wordlist_from_file(WORDLIST_FILE)
+    if WORDSET:
+        log(f"词库从文件加载：{len(WORDSET)} 词（{WORDLIST_FILE}）")
+    else:
+        try:
+            WORDSET = load_wordlist_from_supabase(supabase)
+            log(f"词库从 Supabase 加载完成：{len(WORDSET)} 词（用于成语兜底拆词）")
+        except Exception as e:
+            log(f"[WARN] 词库加载失败，成语将无法自动拆词：{e}")
 
     update_dictionary_examples(supabase, "dictionary")
     update_dictionary_examples(supabase, "community_words")

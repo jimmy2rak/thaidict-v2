@@ -66,19 +66,39 @@ _WORDLIST_TABLE = os.getenv("THAI_WORDLIST_TABLE", "dictionary")
 _WORDLIST_COLUMN = os.getenv("THAI_WORDLIST_COLUMN", "word")
 
 
+def _wordlist_candidates():
+    """多候选路径探测：兼容直接 `COPY . /app` 后落在
+    /app/services/thai-segment/wordlist.txt，也兼容旧布局 /app/wordlist.txt
+    与 THAI_WORDLIST_FILE 覆盖。"""
+    env = os.getenv("THAI_WORDLIST_FILE")
+    here = os.path.dirname(os.path.abspath(__file__))
+    cands = []
+    if env:
+        cands.append(env)
+    cands += [
+        "/app/wordlist.txt",
+        os.path.join(here, "wordlist.txt"),
+        os.path.join(here, "..", "services", "thai-segment", "wordlist.txt"),
+        "/app/services/thai-segment/wordlist.txt",
+    ]
+    return cands
+
+
 def _get_wordset():
-    """懒加载词集：优先镜像内持久化文件，否则从 Supabase 拉取并写回文件。
-    无凭据或拉取失败时返回 None（仅退化为 newmm + custom_dict）。"""
+    """懒加载词集：优先镜像内持久化文件（烤进镜像的 wordlist.txt），
+    否则从 Supabase 拉取并写回文件。无凭据或拉取失败时返回 None
+    （仅退化为 newmm + custom_dict）。"""
     global _WORDSET, _WORDSET_LOADED
     if _WORDSET_LOADED:
         return _WORDSET
     _WORDSET_LOADED = True
-    # 1) 已有持久化文件直接用
-    ws = load_wordlist_from_file(_WORDLIST_FILE)
-    if ws:
-        _WORDSET = ws
-        print(f"[thai-segment] wordlist loaded from file: {len(ws)} words")
-        return _WORDSET
+    # 1) 已有持久化文件直接用（按候选路径探测）
+    for p in _wordlist_candidates():
+        ws = load_wordlist_from_file(p)
+        if ws:
+            _WORDSET = ws
+            print(f"[thai-segment] wordlist loaded from file: {p} ({len(ws)} words)")
+            return _WORDSET
     # 2) 有 Supabase 凭据则拉取并缓存
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
@@ -115,6 +135,7 @@ def _segment_safe(text: str, engine: str = "newmm"):
 @app.get("/health")
 def health():
     import os as _os
+    ws = _get_wordset()  # 触发懒加载，使 wordlist_size 真实反映词库规模
     return {
         "ok": True,
         "pythainlp": True,
@@ -122,7 +143,7 @@ def health():
         "custom_dict": CUSTOM_DICT_PATH,
         "custom_dict_exists": _os.path.isfile(CUSTOM_DICT_PATH),
         "custom_words": len(CUSTOM_MAP),
-        "wordlist_size": len(_WORDSET or []),
+        "wordlist_size": len(ws or []),
     }
 
 
