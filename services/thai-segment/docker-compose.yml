@@ -1,0 +1,17 @@
+services:
+  thai-segment:
+    build: .
+    image: thai-segment:latest
+    container_name: thai-segment
+    restart: unless-stopped
+    # 只监听本机回环，外部必须经宝塔 Nginx 反向代理访问（更安全）
+    ports:
+      - "127.0.0.1:8000:8000"
+    # e2-micro 内存紧张，限制容器内存，避免拖垮整台服务器
+    mem_limit: 800m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
