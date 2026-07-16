@@ -11,6 +11,12 @@ services:
       - "127.0.0.1:8000:8000"
     # e2-micro 内存紧张，限制容器内存，避免拖垮整台服务器
     mem_limit: 800m
+    # 透传 Supabase 凭据（在宿主机 shell 中 export 后 docker compose 会注入），
+    # 让分词服务启动时能加载 6 万词库做成语兜底拆词。
+    # 未设置时为空，服务自动退化为 newmm + custom_dict（不影响运行）。
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 30s

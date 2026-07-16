@@ -18,9 +18,9 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from seg_utils import load_custom_map, segment as _seg
+from seg_utils import load_custom_map, segment as _seg, load_wordlist_from_file, load_wordlist_from_supabase, save_wordlist_to_file
 
-app = FastAPI(title="Thai Segment Service", version="1.1.0")
+app = FastAPI(title="Thai Segment Service", version="1.2.0")
 
 # ---------- 配置 ----------
 def _resolve_dict_path():
@@ -58,6 +58,44 @@ def _get_map():
     return CUSTOM_MAP
 
 
+# ---------- 词库（用于成语/谚语兜底拆词） ----------
+_WORDSET: Optional[set] = None
+_WORDSET_LOADED = False
+_WORDLIST_FILE = os.getenv("THAI_WORDLIST_FILE", "/app/wordlist.txt")
+_WORDLIST_TABLE = os.getenv("THAI_WORDLIST_TABLE", "dictionary")
+_WORDLIST_COLUMN = os.getenv("THAI_WORDLIST_COLUMN", "word")
+
+
+def _get_wordset():
+    """懒加载词集：优先镜像内持久化文件，否则从 Supabase 拉取并写回文件。
+    无凭据或拉取失败时返回 None（仅退化为 newmm + custom_dict）。"""
+    global _WORDSET, _WORDSET_LOADED
+    if _WORDSET_LOADED:
+        return _WORDSET
+    _WORDSET_LOADED = True
+    # 1) 已有持久化文件直接用
+    ws = load_wordlist_from_file(_WORDLIST_FILE)
+    if ws:
+        _WORDSET = ws
+        print(f"[thai-segment] wordlist loaded from file: {len(ws)} words")
+        return _WORDSET
+    # 2) 有 Supabase 凭据则拉取并缓存
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if url and key:
+        try:
+            from supabase import create_client
+            sb = create_client(url, key)
+            ws = load_wordlist_from_supabase(sb, _WORDLIST_TABLE, _WORDLIST_COLUMN)
+            if ws:
+                save_wordlist_to_file(ws, _WORDLIST_FILE)
+                _WORDSET = ws
+                print(f"[thai-segment] wordlist loaded from supabase: {len(ws)} words")
+        except Exception as e:
+            print(f"[thai-segment] wordlist load failed: {e}")
+    return _WORDSET
+
+
 # ---------- 请求模型 ----------
 class SegmentReq(BaseModel):
     text: str
@@ -67,7 +105,7 @@ class SegmentReq(BaseModel):
 # ---------- 分词（带兜底） ----------
 def _segment_safe(text: str, engine: str = "newmm"):
     try:
-        return _seg(text, engine=engine, custom_map=_get_map())
+        return _seg(text, engine=engine, custom_map=_get_map(), word_set=_get_wordset())
     except Exception as e:
         print(f"[thai-segment] pythainlp error: {e}")
         return [{"text": text, "type": "word"}]
@@ -84,6 +122,7 @@ def health():
         "custom_dict": CUSTOM_DICT_PATH,
         "custom_dict_exists": _os.path.isfile(CUSTOM_DICT_PATH),
         "custom_words": len(CUSTOM_MAP),
+        "wordlist_size": len(_WORDSET or []),
     }
 
 

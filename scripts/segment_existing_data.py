@@ -16,9 +16,12 @@ segment_existing_data.py
   export BATCH_SIZE=100          # 每批处理条数，默认 100
   export ONLY_EMPTY=1            # 只处理 segmented 为空的数据（默认开）
   export ONLY_SINGLE=1           # 只重跑 segmented 为单 token 的行（如俗语被当成一个词）
+  export ONLY_CATEGORY=idioms   # 只处理该 category 的 sentences（短语库：idioms/buddhist/daily）
   export DRY_RUN=1               # 只打印，不写入
   export THAI_SEGMENT_ENGINE=newmm # newmm | mm | dict
-注：自定义俗语映射见 services/thai-segment/custom_dict.txt，自动生效。
+注：分词自动用「词库兜底拆词」——newmm 把成语合成一个长词时，会用 dictionary 表
+的 6 万词做贪婪最长匹配拆开，从而自动拆分【所有】短语，无需逐条加 custom_dict。
+自定义俗语映射见 services/thai-segment/custom_dict.txt，作为非组合型成语的最终兜底。
 
 用法：
   python scripts/segment_existing_data.py
@@ -31,16 +34,13 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-# PyThaiNLP
-from pythainlp.tokenize import word_tokenize
-
 # Supabase Python client
 from supabase import create_client, Client
 
-# 复用服务端分词工具（自定义俗语映射单一数据源）
+# 复用服务端分词工具（自定义俗语映射 + 词库兜底拆词，单一数据源）
 import sys as _sys
 _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "thai-segment"))
-from seg_utils import load_custom_map, expand_tokens  # noqa: E402
+from seg_utils import load_custom_map, segment as _seg, load_wordlist_from_supabase  # noqa: E402
 
 CUSTOM_DICT_PATH = os.path.join(
     os.path.dirname(__file__), "..", "services", "thai-segment", "custom_dict.txt"
@@ -53,8 +53,11 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100"))
 ONLY_EMPTY = os.getenv("ONLY_EMPTY", "1") == "1"
 ONLY_SINGLE = os.getenv("ONLY_SINGLE", "0") == "1"  # 只重跑 segmented 为单 token 的行
+ONLY_CATEGORY = os.getenv("ONLY_CATEGORY", "")      # 只处理该 category 的 sentences（如 idioms/buddhist/daily）
 DRY_RUN = os.getenv("DRY_RUN", "0") == "1"
 ENGINE = os.getenv("THAI_SEGMENT_ENGINE", "newmm")
+# 词库兜底拆词用到的词集（启动时从 Supabase 拉取，6 万+ 词）
+WORDSET = set()
 
 
 def log(msg: str):
@@ -63,23 +66,11 @@ def log(msg: str):
 
 
 def segment_text(text: str, custom_map=None) -> List[Dict[str, str]]:
-    """返回前端 ThaiSentence 兼容的 token 数组：[{text, type}]"""
+    """返回前端 ThaiSentence 兼容的 token 数组：[{text, type}]。
+    复用 seg_utils.segment：newmm + 词库长词兜底（成语自动拆词）+ 自定义映射递归展开。"""
     if not text or not text.strip():
         return []
-    words = word_tokenize(text, engine=ENGINE)
-    tokens = []
-    for w in words:
-        if not w:
-            continue
-        if w.strip() == "":
-            tokens.append({"text": w, "type": "space"})
-        elif w in " \t\n\r":
-            tokens.append({"text": w, "type": "space"})
-        else:
-            tokens.append({"text": w, "type": "word"})
-    if custom_map:
-        tokens = expand_tokens(tokens, custom_map)
-    return tokens
+    return _seg(text, engine=ENGINE, custom_map=custom_map, word_set=WORDSET)
 
 
 def update_dictionary_examples(supabase: Client, table_name: str = "dictionary"):
@@ -167,11 +158,12 @@ def update_dictionary_examples(supabase: Client, table_name: str = "dictionary")
 
 
 def update_sentences(supabase: Client):
-    """回填 sentences 表 segmented 字段。"""
+    """回填 sentences 表 segmented 字段。
+    ONLY_CATEGORY 非空时只处理该 category（如 idioms/buddhist/daily 短语库）。"""
     log("开始读取 sentences 表...")
     rows = []
     page = 0
-    query = supabase.table("sentences").select("id, text, segmented")
+    query = supabase.table("sentences").select("id, text, segmented, category")
     while True:
         resp = query.range(page * BATCH_SIZE, (page + 1) * BATCH_SIZE - 1).execute()
         data = resp.data or []
@@ -181,11 +173,16 @@ def update_sentences(supabase: Client):
         page += 1
         log(f"  已读取 {len(rows)} 行...")
 
-    log(f"共读取 sentences {len(rows)} 行")
+    log(f"共读取 sentences {len(rows)} 行" + (f"（仅 category={ONLY_CATEGORY}）" if ONLY_CATEGORY else ""))
 
     updated = 0
     skipped = 0
     for row in rows:
+        # 仅处理指定 category（短语库）
+        if ONLY_CATEGORY and (row.get("category") or "") != ONLY_CATEGORY:
+            skipped += 1
+            continue
+
         text = row.get("text") or ""
         if not text.strip():
             skipped += 1
@@ -224,8 +221,16 @@ def main():
         log("错误：请设置 SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY 环境变量")
         sys.exit(1)
 
-    log(f"DRY_RUN={DRY_RUN}, ONLY_EMPTY={ONLY_EMPTY}, ONLY_SINGLE={ONLY_SINGLE}, BATCH_SIZE={BATCH_SIZE}, ENGINE={ENGINE}, CUSTOM_DICT={CUSTOM_DICT_PATH}")
+    log(f"DRY_RUN={DRY_RUN}, ONLY_EMPTY={ONLY_EMPTY}, ONLY_SINGLE={ONLY_SINGLE}, ONLY_CATEGORY={ONLY_CATEGORY}, BATCH_SIZE={BATCH_SIZE}, ENGINE={ENGINE}, CUSTOM_DICT={CUSTOM_DICT_PATH}")
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+    # 加载 6 万词泰语词库，用于成语/谚语兜底拆词（自动拆分所有短语）
+    global WORDSET
+    try:
+        WORDSET = load_wordlist_from_supabase(supabase)
+        log(f"词库加载完成：{len(WORDSET)} 词（用于成语兜底拆词）")
+    except Exception as e:
+        log(f"[WARN] 词库加载失败，成语将无法自动拆词：{e}")
 
     update_dictionary_examples(supabase, "dictionary")
     update_dictionary_examples(supabase, "community_words")
