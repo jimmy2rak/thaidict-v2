@@ -321,10 +321,22 @@ const relStyle = (c) => ({
 })
 // 近反义词/学习者建议单词：查到释义时附加中文括号（多义用分号分隔），查不到则不显示括号（需求 #5）
 function RelWord({ word, color, meaning, onClick }) {
-  // 用 ThaiSentence 渲染泰语词，自动分词（复合词细分）+ 点击查词/跳转
+  // 高亮块整体点击进入完整词语页面；内部 ThaiSentence 保持分词/下划线，点击下划线弹出气泡
   return (
-    <span style={relStyle(color)}>
-      <ThaiSentence text={word} onWordClick={onClick} style={{ fontFamily: 'var(--th-font)', fontSize: 13 }} />
+    <span
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick?.()
+      }}
+      style={{
+        ...relStyle(color),
+        cursor: 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+      }}
+    >
+      <ThaiSentence text={word} style={{ fontFamily: 'var(--th-font)', fontSize: 13 }} />
       {meaning && meaning.length > 0 && (
         <span style={{ fontFamily: 'var(--zh-font)', fontSize: 12 }}>（{meaning.join('；')}）</span>
       )}

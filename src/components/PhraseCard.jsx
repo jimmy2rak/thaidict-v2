@@ -39,7 +39,7 @@ export default function PhraseCard({
     <Card onClick={onOpen} style={{ cursor: 'pointer', ...style }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* 完整原句（大字）：同样走 ThaiSentence，可点击查词；有 curated segmented 时优先使用 */}
+        {/* 完整原句（大字）：卡片主词条不显示下划线，点击卡片进入详情 */}
         <div
           style={{
             fontSize: 16,
@@ -49,13 +49,7 @@ export default function PhraseCard({
             lineHeight: 1.35,
           }}
         >
-          <ThaiSentence
-            text={item.thai}
-            type="sentence"
-            separator=""
-            tokens={item.segmented && item.segmented.length ? item.segmented : undefined}
-            style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-p800)', lineHeight: 1.35 }}
-          />
+          {item.thai}
         </div>
 
         {/* 分词结构（小字）：优先用 curated segmented，否则走分词器 */}

@@ -136,7 +136,7 @@ export default function LoginPage({ onForgot }) {
   return (
     <div className="scroll-y" style={{ flex: 1, padding: '48px 24px 24px', display: 'flex', flexDirection: 'column' }}>
       {/* 品牌头部 */}
-      <div style={{ textAlign: 'center', marginBottom: 30 }}>
+      <div style={{ textAlign: 'center', marginBottom: 28 }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
           <MainLogo size={88} />
         </div>
@@ -144,7 +144,7 @@ export default function LoginPage({ onForgot }) {
         <div style={{ fontSize: 13, color: 'var(--c-p500)', marginTop: 4 }}>中泰双语智能词典</div>
       </div>
 
-      {/* Google / GitHub 圆形按钮 */}
+      {/* Google / GitHub 圆形按钮：账号登录上方，作为首选 */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginBottom: 18 }}>
         <button onClick={() => onOAuth('google')} style={oauthBtn} title="使用 Google 登录" aria-label="Google 登录">
           <GoogleIcon size={24} />
@@ -162,8 +162,17 @@ export default function LoginPage({ onForgot }) {
       </div>
 
       <Card style={{ marginBottom: 14 }}>
-        {/* Toggle 组：密码登录 / 验证码·链接登录 */}
-        <div style={{ display: 'inline-flex', border: '1px solid var(--c-p200)', borderRadius: 10, overflow: 'hidden', background: 'var(--c-surface)', marginBottom: 14 }}>
+        {/* 切换 Tab：密码登录 / 验证码·链接登录 */}
+        <div
+          style={{
+            display: 'flex',
+            border: '1px solid var(--c-p200)',
+            borderRadius: 12,
+            overflow: 'hidden',
+            background: 'var(--c-p100)',
+            marginBottom: 20,
+          }}
+        >
           {[
             { key: 'password', label: '密码登录' },
             { key: 'otp', label: '验证码/链接登录' },
@@ -172,14 +181,15 @@ export default function LoginPage({ onForgot }) {
               key={m.key}
               onClick={() => { setMethod(m.key); setError(''); setOtpSent(false) }}
               style={{
-                padding: '7px 14px',
-                fontSize: 13,
+                flex: 1,
+                padding: '10px 0',
+                fontSize: 14,
                 fontWeight: 600,
                 border: 'none',
-                borderRight: m.key === 'password' ? '1px solid var(--c-p200)' : 'none',
-                background: method === m.key ? 'var(--c-primary)' : 'var(--c-surface)',
-                color: method === m.key ? '#fff' : 'var(--c-p500)',
+                background: method === m.key ? 'var(--c-surface)' : 'transparent',
+                color: method === m.key ? 'var(--c-p800)' : 'var(--c-p500)',
                 cursor: 'pointer',
+                transition: 'background 0.15s ease',
               }}
             >
               {m.label}
@@ -189,28 +199,40 @@ export default function LoginPage({ onForgot }) {
 
         {method === 'password' ? (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <Mail size={18} color="var(--c-p500)" />
-              <input style={inputStyle} placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 14, color: 'var(--c-p700)' }}>
+                <Mail size={16} color="var(--c-p500)" />
+                <span>邮箱</span>
+              </div>
+              <input
+                style={inputStyle}
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <Lock size={18} color="var(--c-p500)" />
-              <input style={inputStyle} type="password" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 14, color: 'var(--c-p700)' }}>
+                <Lock size={16} color="var(--c-p500)" />
+                <span>密码</span>
+              </div>
+              <input
+                style={inputStyle}
+                type="password"
+                placeholder="请输入密码"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-            {error && <div style={{ color: 'var(--c-rose)', fontSize: 13, marginBottom: 8 }}>{error}</div>}
+            {error && <div style={{ color: 'var(--c-rose)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
             <Btn onClick={onPasswordSubmit} disabled={loading} style={{ width: '100%' }}>
-              {loading ? <Spinner size={16} color="#fff" /> : '登录 / 注册'}
+              {loading ? <Spinner size={16} color="#fff" /> : '登录'}
             </Btn>
-            <div style={{ marginTop: 10, textAlign: 'right' }}>
-              <button onClick={onForgot} style={{ fontSize: 12, color: 'var(--c-p500)', background: 'none', border: 'none' }}>
-                忘记密码？
-              </button>
-            </div>
           </>
         ) : (
           <>
             {/* 验证码 / 链接 子切换 */}
-            <div style={{ display: 'inline-flex', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'inline-flex', gap: 8, marginBottom: 14 }}>
               {[
                 { key: 'code', label: '邮箱验证码' },
                 { key: 'link', label: '邮箱链接' },
@@ -234,25 +256,41 @@ export default function LoginPage({ onForgot }) {
               ))}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <Mail size={18} color="var(--c-p500)" />
-              <input style={inputStyle} placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 14, color: 'var(--c-p700)' }}>
+                <Mail size={16} color="var(--c-p500)" />
+                <span>邮箱</span>
+              </div>
+              <input
+                style={inputStyle}
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
 
             {otpKind === 'code' ? (
               <>
                 {!otpSent ? (
                   <Btn onClick={onSendOtp} disabled={loading} style={{ width: '100%' }}>
-                    {loading ? <Spinner size={16} color="#fff" /> : (<><Send size={15} /> 发送验证码（登录/注册）</>)}
+                    {loading ? <Spinner size={16} color="#fff" /> : (<><Send size={15} /> 发送验证码</>)}
                   </Btn>
                 ) : (
                   <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <KeyRound size={18} color="var(--c-p500)" />
-                      <input style={inputStyle} placeholder="6 位验证码" value={otpCode} onChange={(e) => setOtpCode(e.target.value)} />
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 14, color: 'var(--c-p700)' }}>
+                        <KeyRound size={16} color="var(--c-p500)" />
+                        <span>验证码</span>
+                      </div>
+                      <input
+                        style={inputStyle}
+                        placeholder="请输入 6 位验证码"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value)}
+                      />
                     </div>
                     <Btn onClick={onVerifyOtp} disabled={loading} style={{ width: '100%' }}>
-                      {loading ? <Spinner size={16} color="#fff" /> : '验证并登录/注册'}
+                      {loading ? <Spinner size={16} color="#fff" /> : '验证并登录'}
                     </Btn>
                   </>
                 )}
@@ -264,7 +302,7 @@ export default function LoginPage({ onForgot }) {
             )}
 
             {otpKind === 'code' && otpSent && (
-              <button onClick={() => setOtpSent(false)} style={{ marginTop: 10, fontSize: 12, color: 'var(--c-info)', background: 'none', border: 'none' }}>
+              <button onClick={() => setOtpSent(false)} style={{ marginTop: 12, fontSize: 12, color: 'var(--c-info)', background: 'none', border: 'none' }}>
                 <ArrowLeft size={12} /> 重新发送验证码
               </button>
             )}
@@ -272,7 +310,20 @@ export default function LoginPage({ onForgot }) {
         )}
       </Card>
 
-      <div style={{ fontSize: 12, color: 'var(--c-p400)', textAlign: 'center', lineHeight: 1.6, marginTop: 'auto' }}>
+      {/* 底部注册 / 找回密码 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, marginBottom: 'auto' }}>
+        <button
+          onClick={() => setMethod('password')}
+          style={{ color: 'var(--c-p500)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
+          还没有账号？<span style={{ color: 'var(--c-primary)' }}>去注册</span>
+        </button>
+        <button onClick={onForgot} style={{ color: 'var(--c-p500)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          找回密码
+        </button>
+      </div>
+
+      <div style={{ fontSize: 12, color: 'var(--c-p400)', textAlign: 'center', lineHeight: 1.6, marginTop: 16 }}>
         登录即表示同意《用户协议》与《隐私政策》
       </div>
 
