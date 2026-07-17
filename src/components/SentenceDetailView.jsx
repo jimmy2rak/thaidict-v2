@@ -49,7 +49,7 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
   const source = sentence.source || ''
   const difficulty = sentence.difficulty ?? null
 
-  const onPlay = () => speak(sentence.thai, { rate: 1.0, lang: 'th-TH' })
+  const onPlay = () => speak(sentence.thai, { lang: 'th-TH' })
 
   const toggleBookmark = async () => {
     if (!userId) return toast('请先登录')

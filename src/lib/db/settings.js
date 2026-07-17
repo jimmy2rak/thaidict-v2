@@ -5,7 +5,6 @@ import { getUserColl, setUserColl } from '../mock/store.js'
 
 const DEFAULTS = {
   color_mode: 'light',
-  speech_rate: 1.0,
   font_size: 'medium',
   chinese_font: 'noto_serif_sc',
   thai_font: 'sarabun',

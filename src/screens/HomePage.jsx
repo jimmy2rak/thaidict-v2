@@ -29,7 +29,6 @@ import { PagodaLine, LeafLine, BowlLine } from '../components/Decorations.jsx'
 export default function HomePage() {
   const app = useApp()
   const { userId, handleWordTap, navigateTo, setSelectedSentence, colorMode } = app
-  const rate = 1.0
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -138,7 +137,6 @@ export default function HomePage() {
               onRefresh={() => onRefresh('word')}
               onTap={handleWordTap}
               refreshing={refreshing}
-              rate={rate}
               userId={userId}
             />
           )}
@@ -220,7 +218,7 @@ function SearchResults({ results, onTap, searching, query, onAiSearch }) {
   )
 }
 
-function DailyWordCard({ word, onRefresh, onTap, refreshing, rate, userId }) {
+function DailyWordCard({ word, onRefresh, onTap, refreshing, userId }) {
   if (!word) return null
   const data = typeof word === 'object' ? transformWordData(word) : null
   const w = data || word
@@ -237,7 +235,6 @@ function DailyWordCard({ word, onRefresh, onTap, refreshing, rate, userId }) {
         refreshable
         onRefresh={onRefresh}
         refreshing={refreshing}
-        rate={rate}
       />
     </div>
   )

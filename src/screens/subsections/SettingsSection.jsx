@@ -19,7 +19,6 @@ export default function SettingsSection({ onClose }) {
   const app = useApp()
   const { userId, colorMode, setColorMode, toast, setChineseFont, setThaiFont } = app
   const [loading, setLoading] = useState(true)
-  const [rate, setRate] = useState(1.0)
   const [fontSize, setFontSize] = useState('medium')
   const [chineseFont, setChineseFontLocal] = useState('noto_serif_sc')
   const [thaiFont, setThaiFontLocal] = useState('sarabun')
@@ -27,7 +26,6 @@ export default function SettingsSection({ onClose }) {
   useEffect(() => {
     if (!userId) return setLoading(false)
     getUserSettings(userId).then((s) => {
-      setRate(s.speech_rate ?? 1.0)
       setFontSize(s.font_size || 'medium')
       setChineseFontLocal(s.chinese_font || 'noto_serif_sc')
       setThaiFontLocal(s.thai_font || 'sarabun')
@@ -37,7 +35,7 @@ export default function SettingsSection({ onClose }) {
 
   const save = async (patch) => {
     if (!userId) return
-    const cur = { speech_rate: rate, font_size: fontSize, ...patch }
+    const cur = { font_size: fontSize, ...patch }
     await saveUserSettings(userId, cur)
     toast('设置已保存')
   }
@@ -93,24 +91,6 @@ export default function SettingsSection({ onClose }) {
         <Card style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 13, color: 'var(--c-p600)', marginBottom: 8 }}>正文字号</div>
           <Seg options={FONT_SIZES} value={fontSize} onChange={(v) => { setFontSize(v); save({ font_size: v }) }} />
-        </Card>
-
-        <Card style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 13, color: 'var(--c-p600)' }}>语音朗读速度</span>
-            <span style={{ fontSize: 13, color: 'var(--c-teal)', fontWeight: 600 }}>{rate.toFixed(1)}x</span>
-          </div>
-          <input
-            type="range"
-            min="0.5"
-            max="1.5"
-            step="0.1"
-            value={rate}
-            onChange={(e) => setRate(parseFloat(e.target.value))}
-            onMouseUp={() => save({ speech_rate: rate })}
-            onTouchEnd={() => save({ speech_rate: rate })}
-            style={{ width: '100%', accentColor: 'var(--c-teal)' }}
-          />
         </Card>
       </div>
     </div>

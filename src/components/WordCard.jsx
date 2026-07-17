@@ -17,7 +17,6 @@ export default function WordCard({
   refreshable = false,
   onRefresh,
   refreshing = false,
-  rate = 1.0,
 }) {
   const app = useApp()
   const { userId } = app
@@ -41,7 +40,7 @@ export default function WordCard({
 
   const onPlay = (e) => {
     e?.stopPropagation?.()
-    speak(word, { rate })
+    speak(word)
   }
 
   return (

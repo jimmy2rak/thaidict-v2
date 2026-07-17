@@ -17,7 +17,7 @@ export function WatArunLogo({ size = 32, color = 'var(--c-gold)' }) {
 export function MainLogo({ size = 48, style }) {
   return (
     <img
-      src="/icons/logo.svg"
+      src="/icons/logo.png"
       width={size}
       height={size}
       alt="词笺 — 中泰双语智能词典"

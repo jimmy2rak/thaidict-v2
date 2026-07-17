@@ -17,12 +17,13 @@ function validateTime(t) {
 
 export default function ReminderPage({ onClose }) {
   const app = useApp()
-  const { userId, toast } = app
+  const { userId, toast, session } = app
   const [loading, setLoading] = useState(true)
   const [enabled, setEnabled] = useState(false)
   const [time, setTime] = useState('20:00')
   const [freq, setFreq] = useState('daily')
   const [saving, setSaving] = useState(false)
+  const [sendBusy, setSendBusy] = useState(false)
   const [err, setErr] = useState('')
 
   useEffect(() => {
@@ -47,14 +48,38 @@ export default function ReminderPage({ onClose }) {
     toast('提醒设置已保存')
   }
 
-  const onTest = () => {
+  const onTest = async () => {
     if (!validateTime(time)) {
       setErr('请先填写有效时间')
       return
     }
     setErr('')
-    // 模拟发送（真实模式由 pg_cron 调度 + send-reminder Edge Function，上线配置）
-    toast('测试提醒已发送（模拟）')
+    setSendBusy(true)
+    try {
+      const token = session?.access_token
+      if (!token) {
+        toast('当前为本地模拟模式，已生成提醒预览')
+        return
+      }
+      const res = await fetch('/api/send-reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast('发送失败：' + (json.error || '未知错误'))
+        return
+      }
+      if (json.data?.mock) {
+        toast('本地模拟：提醒邮件未真实发送')
+      } else {
+        toast(`提醒邮件已发送，今天还有 ${json.data?.uncheckedCount ?? 0} 项未打卡`)
+      }
+    } catch (e) {
+      toast('发送失败：' + e.message)
+    } finally {
+      setSendBusy(false)
+    }
   }
 
   if (loading) {
@@ -115,14 +140,14 @@ export default function ReminderPage({ onClose }) {
         </Card>
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onTest} disabled={!enabled} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px', borderRadius: 12, border: '1px solid var(--c-info)', color: 'var(--c-info)', background: 'transparent', fontSize: 14, fontWeight: 600, opacity: enabled ? 1 : 0.5 }}>
-            <Send size={15} /> 测试发送
+          <button onClick={onTest} disabled={!enabled || sendBusy} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px', borderRadius: 12, border: '1px solid var(--c-info)', color: 'var(--c-info)', background: 'transparent', fontSize: 14, fontWeight: 600, opacity: enabled ? 1 : 0.5 }}>
+            <Send size={15} /> {sendBusy ? '发送中…' : '测试发送'}
           </button>
           <Btn onClick={onSave} disabled={saving} style={{ flex: 1 }}>{saving ? '保存中…' : '保存'}</Btn>
         </div>
 
         <div style={{ fontSize: 11, color: 'var(--c-s500)', marginTop: 14, lineHeight: 1.6, textAlign: 'center' }}>
-          本地为模拟提醒；上线后由 pg_cron 定时调度并调用 send-reminder 边缘函数
+          测试发送将调用 Brevo 向当前账号邮箱发送一封学习提醒，邮件中列出今天未打卡的任务。
         </div>
       </div>
     </div>

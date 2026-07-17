@@ -17,13 +17,12 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
   }
 }
 
-export function speak(text, { rate = 1.0, lang = 'th-TH' } = {}) {
+export function speak(text, { lang = 'th-TH' } = {}) {
   if (typeof window === 'undefined' || !window.speechSynthesis || !text) return false
   try {
     window.speechSynthesis.cancel()
     const u = new SpeechSynthesisUtterance(text)
     u.lang = lang
-    u.rate = rate
     const v = getThaiVoice()
     if (v) u.voice = v
     window.speechSynthesis.speak(u)

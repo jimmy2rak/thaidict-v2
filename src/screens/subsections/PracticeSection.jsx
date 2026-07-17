@@ -138,7 +138,6 @@ export default function PracticeSection({ onClose }) {
   }
 
   if (phase === 'quiz' && current) {
-    const rate = 1.0
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
         <Header onClose={onClose} title={`练习 ${qIndex + 1}/${Q_COUNT}`} />
@@ -150,7 +149,7 @@ export default function PracticeSection({ onClose }) {
               <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--c-p800)' }}>{current.prompt}</div>
             )}
             {mode === 'th_zh' && (
-              <button onClick={() => speak(current.prompt, { rate, lang: 'th-TH' })} style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--c-teal)', fontSize: 13, background: 'none' }}>
+              <button onClick={() => speak(current.prompt, { lang: 'th-TH' })} style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--c-teal)', fontSize: 13, background: 'none' }}>
                 <Volume2 size={14} /> 朗读
               </button>
             )}

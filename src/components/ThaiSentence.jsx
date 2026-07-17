@@ -57,7 +57,7 @@ export default function ThaiSentence({
   // 原生词条直接下划线；其余长例句走缓存/分词客户端
   useEffect(() => {
     if (presetTokens && presetTokens.length) {
-      setTokens(presetTokens.map((t) => ({ text: t.text, type: 'word' })))
+      setTokens(presetTokens.map((t) => ({ ...t, type: 'word' })))
       setLoading(false)
       return
     }

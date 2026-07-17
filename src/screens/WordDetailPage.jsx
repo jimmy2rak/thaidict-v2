@@ -129,8 +129,6 @@ export default function WordDetailPage({ word }) {
     )
   }
 
-  const rate = 1.0
-
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* 顶栏 */}
@@ -163,7 +161,7 @@ export default function WordDetailPage({ word }) {
                 ))}
               </div>
             </div>
-            <IconButton onClick={() => speak(data.word, { rate })} title="朗读" style={{ width: 44, height: 44 }}>
+            <IconButton onClick={() => speak(data.word)} title="朗读" style={{ width: 44, height: 44 }}>
               <Volume2 size={24} />
             </IconButton>
           </div>
@@ -198,7 +196,7 @@ export default function WordDetailPage({ word }) {
                     <div style={{ color: 'var(--c-p500)', lineHeight: 1.5, wordBreak: 'break-word', fontFamily: 'var(--zh-font)' }}>{ex.zh}</div>
                   </div>
                   <button
-                    onClick={() => speak(exThai, { rate })}
+                    onClick={() => speak(exThai)}
                     title="朗读例句"
                     style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, background: 'var(--c-p100)', border: 'none', color: 'var(--c-p700)', cursor: 'pointer' }}
                   >

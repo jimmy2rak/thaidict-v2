@@ -32,7 +32,7 @@ export default function PhraseCard({
 
   const onPlay = (e) => {
     e?.stopPropagation?.()
-    speak(item.thai, { rate: 1.0, lang: 'th-TH' })
+    speak(item.thai, { lang: 'th-TH' })
   }
 
   return (
