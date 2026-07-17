@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Settings, KeyRound, CloudUpload, Bell, Award, LogOut, ChevronRight, User, Shield, ClipboardCheck, Github, GitBranch, Download } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
-import { signOut, updateUserPassword } from '../lib/db/auth.js'
+import { signOut, updateUserPassword, updateUserMeta } from '../lib/db/auth.js'
 import { Card, IconButton } from '../components/UIComponents.jsx'
 import { isSuperAdmin, hasPermission } from '../lib/db/index.js'
 
@@ -157,6 +157,11 @@ function EditProfileSection({ user, profile, isThirdParty, onClose, onSave, edit
       if (!newProfile.nickname) delete newProfile.nickname
 
       onSave(newProfile)
+
+      // 昵称写入 Supabase user_metadata（头像仅 localStorage）
+      if (newProfile.nickname) {
+        await updateUserMeta({ username: newProfile.nickname })
+      }
 
       // 密码修改（仅非第三方登录且有输入）
       if (!isThirdParty && editForm.newPass && editForm.curPass) {

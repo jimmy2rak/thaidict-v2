@@ -197,14 +197,14 @@ const SQL_SET_SUPER = `-- 将指定邮箱用户设为「超级管理员」（自
 insert into user_roles (user_id, role, permissions, updated_at)
 select id, 'super_admin', array[]::text[], now()
 from auth.users
-where email = 'mindsoya@gmail.com'
+where email = 'your-admin@example.com'
 on conflict (user_id)
 do update set role = 'super_admin', permissions = array[]::text[], updated_at = now();`
 
 const SQL_REMOVE_SUPER = `-- 取消某用户的超级管理员（降级为普通用户）
 update user_roles
 set role = 'user', permissions = array[]::text[], updated_at = now()
-where user_id = (select id from auth.users where email = 'mindsoya@gmail.com');`
+where user_id = (select id from auth.users where email = 'your-admin@example.com');`
 
 const SQL_PROMOTE_ADMIN = `-- 通过数据库直接将某用户提升为「管理员」（可选，UI 也可操作）
 insert into user_roles (user_id, role, permissions, updated_at)

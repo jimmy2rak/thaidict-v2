@@ -16,7 +16,8 @@ export async function POST(req) {
   const supabase = getServerSupabase()
   if (!supabase) return NextResponse.json({ error: '服务端未配置 Supabase' }, { status: 500 })
 
-  const redirectTo = process.env.NEXT_PUBLIC_SITE_URL || 'https://thaidict.182183.xyz'
+  const redirectTo = process.env.NEXT_PUBLIC_SITE_URL
+  if (!redirectTo) return NextResponse.json({ error: '服务端未配置 NEXT_PUBLIC_SITE_URL' }, { status: 500 })
 
   // 生成 Supabase Magic Link（由 Brevo 发送，不走 Supabase 自带邮件服务）
   let actionLink

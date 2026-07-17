@@ -102,6 +102,13 @@ export async function updateUserPassword(newPassword) {
   return supabase.auth.updateUser({ password: newPassword })
 }
 
+// 更新用户元数据（昵称、头像等），同时写入 Supabase user_metadata。
+// mock 模式仅返回成功（localStorage 独立处理）。
+export async function updateUserMeta(metadata) {
+  if (!isSupabaseConfigured) return { data: { user: { ...MOCK_USER, user_metadata: { ...MOCK_USER.user_metadata, ...metadata } } }, error: null }
+  return supabase.auth.updateUser({ data: metadata })
+}
+
 // OTP（Brevo）。mock 生成固定验证码；real 走 Next.js Route Handler（/api/send-otp）。
 export async function sendOtp(email, purpose) {
   if (!isSupabaseConfigured) {

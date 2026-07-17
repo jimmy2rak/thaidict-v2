@@ -8,3 +8,7 @@ node_modules
 *.log
 npm-debug.log*
 .DS_Store
+# 环境变量文件（严禁进入 Docker 镜像层）
+.env
+.env.local
+.env.*
