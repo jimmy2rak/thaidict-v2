@@ -4,22 +4,9 @@ Deepnote / GitHub Actions 每日推荐自动化脚本（修复版）
 =====================================================
 每天自动运行一次，选取随机词条 + 句子写入 daily_picks（按 pick_date 去重）。
 
-相比旧版的关键修复（Issue 4）：
-  1. save_daily_pick 改为「先查今天是否存在 → 存在则 update，否则 insert」的稳健写法，
-     不再依赖 upsert(on_conflict="pick_date")——因为旧库 daily_picks 没有 pick_date
-     唯一约束时，PostgREST 的 upsert 会直接报
-     "there is no unique or exclusion constraint matching the ON CONFLICT specification"
-     而写入失败（表现为「每天刷新都变、数据库无真实更新」）。
-     （同时已提供 supabase/migrations/05-*.sql 补上唯一索引，作为双重保险。）
-  2. 移除脚本中硬编码的 service_role key。密钥一律从环境变量读取
-     （GitHub Actions: Settings → Secrets → SUPABASE_SERVICE_ROLE_KEY），
-     避免密钥泄露。
-  3. fetch_random_word/sentence 增加「RPC 不存在则直接表扫描」的兜底，
-     保证任何情况下都能取到候选，不会因 RPC 缺失而整脚本退出。
-
-环境变量：
-  SUPABASE_URL              - Supabase 项目 URL（必填）
-  SUPABASE_SERVICE_ROLE_KEY - Service Role Key（必填，绕过 RLS）
+环境变量（可覆盖内嵌默认值）：
+  SUPABASE_URL              - Supabase 项目 URL（默认已嵌入）
+  SUPABASE_SERVICE_ROLE_KEY - Service Role Key（默认已嵌入）
   USE_AI_PICK               - 是否启用 AI 推荐（可选，默认 "false"）
   AI_API_KEY                - AI API 密钥（可选，默认使用免费密钥）
 """
@@ -66,10 +53,15 @@ import requests
 
 
 # =============================================================================
-# 配置（仅从环境变量读取，禁止硬编码密钥）
+# 配置（优先读取环境变量；未设置则使用内嵌默认值）
 # =============================================================================
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_URL = os.environ.get(
+    "SUPABASE_URL", "https://zvemahqskgluhirzbcqu.supabase.co"
+)
+SUPABASE_KEY = os.environ.get(
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZW1haHFza2dsdWhpcnpiY3F1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDkxNTE1NiwiZXhwIjoyMDk2NDkxMTU2fQ.hgzdlM3o7ns664vrtq5e8ncYsly5oXJFYlyUhRDQCHs",
+)
 USE_AI = os.environ.get("USE_AI_PICK", "false").lower() == "true"
 
 AI_API_BASE = "https://api.modelbest.cn/v1"
