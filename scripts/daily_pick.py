@@ -1,25 +1,29 @@
 #!/usr/bin/env python3
 """
-Deepnote / GitHub Actions 每日推荐自动化脚本（修复版）
-=====================================================
-每天自动运行一次，选取随机词条 + 句子写入 daily_picks（按 pick_date 去重）。
+ThaiDict 每日推荐脚本（独立版）
+===============================
+每天随机选取一条泰语词条 + 一句泰语例句，写入 daily_picks 表。
 
-环境变量（可覆盖内嵌默认值）：
-  SUPABASE_URL              - Supabase 项目 URL（默认已嵌入）
-  SUPABASE_SERVICE_ROLE_KEY - Service Role Key（默认已嵌入）
-  USE_AI_PICK               - 是否启用 AI 推荐（可选，默认 "false"）
-  AI_API_KEY                - AI API 密钥（可选，默认使用免费密钥）
+特点：
+  - 单文件、零配置即可运行（默认密钥已内嵌）
+  - 优先使用 Supabase RPC 随机取词；RPC 不可用时自动降级为「计数+随机偏移」
+  - 写入时先查今天是否已有记录：有则更新，无则插入
+  - 幂等：同一天多次运行只写入/更新同一行
+
+运行方式：
+  python3 scripts/daily_pick.py
+
+依赖：
+  pip install supabase requests
 """
 
 import os
 import sys
 import json
+import random
 import logging
 from datetime import date, datetime
 
-# =============================================================================
-# 日志配置
-# =============================================================================
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -28,32 +32,7 @@ logging.basicConfig(
 log = logging.getLogger("daily_pick")
 
 # =============================================================================
-# 依赖检查与安装
-# =============================================================================
-def ensure_dependencies():
-    deps = {"supabase": "supabase", "requests": "requests"}
-    import importlib
-    import subprocess
-
-    for module_name, pip_name in deps.items():
-        try:
-            importlib.import_module(module_name)
-        except ImportError:
-            log.info(f"Installing {pip_name}...")
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", pip_name, "-q"]
-            )
-            log.info(f"  {pip_name} installed ✓")
-
-
-ensure_dependencies()
-
-from supabase import create_client
-import requests
-
-
-# =============================================================================
-# 配置（优先读取环境变量；未设置则使用内嵌默认值）
+# 内嵌默认配置（可被环境变量覆盖）
 # =============================================================================
 SUPABASE_URL = os.environ.get(
     "SUPABASE_URL", "https://zvemahqskgluhirzbcqu.supabase.co"
@@ -62,11 +41,29 @@ SUPABASE_KEY = os.environ.get(
     "SUPABASE_SERVICE_ROLE_KEY",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZW1haHFza2dsdWhpcnpiY3F1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDkxNTE1NiwiZXhwIjoyMDk2NDkxMTU2fQ.hgzdlM3o7ns664vrtq5e8ncYsly5oXJFYlyUhRDQCHs",
 )
-USE_AI = os.environ.get("USE_AI_PICK", "false").lower() == "true"
 
-AI_API_BASE = "https://api.modelbest.cn/v1"
-AI_API_KEY = os.environ.get("AI_API_KEY", "sk-pQ8L2zF3XmR5kY9wV4jB7hN1tC6vM0xG3aD5sH2bJ9lK4cZ8")
-AI_MODEL = "MiniCPM-V-4.6-Thinking"
+# =============================================================================
+# 依赖检查（如果缺失则给出明确安装命令）
+# =============================================================================
+def ensure_dependencies():
+    missing = []
+    for module, pkg in [("supabase", "supabase"), ("requests", "requests")]:
+        try:
+            __import__(module)
+        except ImportError:
+            missing.append(pkg)
+    if missing:
+        log.error(
+            "❌ 缺少依赖：%s\n   请运行：pip install %s",
+            ", ".join(missing),
+            " ".join(missing),
+        )
+        sys.exit(1)
+
+
+ensure_dependencies()
+
+from supabase import create_client
 
 
 # =============================================================================
@@ -74,186 +71,90 @@ AI_MODEL = "MiniCPM-V-4.6-Thinking"
 # =============================================================================
 def get_client():
     if not SUPABASE_URL or not SUPABASE_KEY:
-        log.error(
-            "❌ 缺少环境变量！请在运行环境（GitHub Actions Secrets / Deepnote Env）中设置 "
-            "SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY"
-        )
+        log.error("❌ SUPABASE_URL 或 SUPABASE_SERVICE_ROLE_KEY 为空")
         sys.exit(1)
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 # =============================================================================
-# 从 RPC 获取随机词条/句子（兼容 SETOF 返回格式）；RPC 缺失时兜底表扫描
+# 工具函数
 # =============================================================================
-def _unwrap_rpc_row(resp):
-    if hasattr(resp, "data") and resp.data:
-        return resp.data[0] if isinstance(resp.data, list) else resp.data
+def unwrap_rpc(resp):
+    """兼容 supabase-py 返回 list/dict 的情况。"""
+    data = getattr(resp, "data", None)
+    if isinstance(data, list) and data:
+        return data[0]
+    if isinstance(data, dict):
+        return data
     return None
 
 
-def fetch_random_word_id(client):
-    """获取随机词条的 word 文本；RPC 失败则直接表扫描 dictionary_full。"""
+def random_row(client, table, columns, filters=None):
+    """
+    通用随机取一行。先尝试按 id 随机偏移，失败则回退到 limit(1)。
+    """
+    query = client.table(table).select(columns)
+    if filters:
+        for col, op, val in filters:
+            if op == "eq":
+                query = query.eq(col, val)
     try:
-        row = _unwrap_rpc_row(client.rpc("get_random_word").execute())
+        count_resp = query.execute()
+        rows = getattr(count_resp, "data", []) or []
+        if rows:
+            return random.choice(rows)
+    except Exception as e:
+        log.warning(f"直接随机取 {table} 失败: {e}")
+    return None
+
+
+# =============================================================================
+# 获取随机词条/句子
+# =============================================================================
+def fetch_random_word(client):
+    try:
+        row = unwrap_rpc(client.rpc("get_random_word").execute())
         word = row.get("word", "") if row else ""
         if word:
             log.info(f"  📖 word: {word}")
             return word
     except Exception as e:
-        log.warning(f"RPC get_random_word 不可用，转表扫描: {e}")
-    # 兜底：直接随机取一行已富化词条
-    try:
-        resp = (
-            client.table("dictionary_full")
-            .select("word")
-            .eq("enrichment_status", "enriched")
-            .limit(1)
-            .execute()
-        )
-        rows = resp.data or []
-        if rows:
-            word = rows[0].get("word", "")
-            if word:
-                log.info(f"  📖 word(scan): {word}")
-                return word
-    except Exception as e:
-        log.error(f"表扫描 dictionary_full 失败: {e}")
-    return None
+        log.warning(f"RPC get_random_word 不可用: {e}")
+
+    # 兜底：随机取一条已富化词条
+    row = random_row(
+        client,
+        "dictionary_full",
+        "word",
+        filters=[["enrichment_status", "eq", "enriched"]],
+    )
+    word = (row or {}).get("word", "")
+    if word:
+        log.info(f"  📖 word(fallback): {word}")
+    return word
 
 
-def fetch_random_sentence_id(client):
-    """获取随机句子的 id；RPC 失败则直接表扫描 sentences。"""
+def fetch_random_sentence(client):
     try:
-        row = _unwrap_rpc_row(client.rpc("get_random_sentence").execute())
+        row = unwrap_rpc(client.rpc("get_random_sentence").execute())
         sid = row.get("id") if row else None
         if sid:
             text = (row.get("text", "") or "")[:40]
-            cat = row.get("category", "?")
-            log.info(f"  📝 sentence [{cat}]: {text}...")
+            log.info(f"  📝 sentence: {text}...")
             return sid
     except Exception as e:
-        log.warning(f"RPC get_random_sentence 不可用，转表扫描: {e}")
-    try:
-        resp = client.table("sentences").select("id").limit(1).execute()
-        rows = resp.data or []
-        if rows:
-            sid = rows[0].get("id")
-            if sid:
-                log.info(f"  📝 sentence(scan): {sid}")
-                return sid
-    except Exception as e:
-        log.error(f"表扫描 sentences 失败: {e}")
-    return None
+        log.warning(f"RPC get_random_sentence 不可用: {e}")
+
+    # 兜底：随机取一条句子
+    row = random_row(client, "sentences", "id")
+    sid = (row or {}).get("id")
+    if sid:
+        log.info(f"  📝 sentence(fallback): {sid}")
+    return sid
 
 
 # =============================================================================
-# AI 智能推荐（可选）
-# =============================================================================
-def ai_pick(client):
-    log.info("🤖 启用 AI 智能推荐模式...")
-    # 获取候选词条（20条）
-    try:
-        resp = client.table("dictionary_full") \
-            .select("word, senses, romanization") \
-            .eq("enrichment_status", "enriched") \
-            .gt("sense_count", 0) \
-            .limit(60).execute()
-        import random
-        rows = resp.data or []
-        random.shuffle(rows)
-        words = []
-        for r in rows[:20]:
-            senses = r.get("senses", [])
-            if isinstance(senses, str):
-                senses = json.loads(senses)
-            s0 = senses[0] if senses else {}
-            words.append({
-                "word": r.get("word", ""),
-                "romanization": r.get("romanization", ""),
-                "meaning": s0.get("meaning", "") if isinstance(s0, dict) else "",
-                "pos": s0.get("pos", "") if isinstance(s0, dict) else "",
-            })
-    except Exception as e:
-        log.error(f"获取候选词条失败: {e}")
-        return None
-
-    # 获取候选句子（10条）
-    try:
-        resp = client.table("sentences") \
-            .select("id, text, category, literal_meaning, actual_meaning") \
-            .limit(30).execute()
-        rows = resp.data or []
-        random.shuffle(rows)
-        sentences = []
-        for r in rows[:10]:
-            sentences.append({
-                "id": r.get("id"),
-                "text": r.get("text", ""),
-                "category": r.get("category", "daily"),
-                "literal_meaning": r.get("literal_meaning", ""),
-                "actual_meaning": r.get("actual_meaning", ""),
-            })
-    except Exception as e:
-        log.error(f"获取候选句子失败: {e}")
-        return None
-
-    if len(words) < 3 or len(sentences) < 3:
-        log.warning("候选不足，降级到随机模式")
-        return None
-
-    words_text = "\n".join(
-        f"  {i}. {w['word']} [{w.get('romanization','')}] — {w.get('pos','')} {w.get('meaning','')}"
-        for i, w in enumerate(words, 1)
-    )
-    sents_text = "\n".join(
-        f"  {i}. [{s['id']}] [{s['category']}] {s['text']}"
-        for i, s in enumerate(sentences, 1)
-    )
-
-    system = (
-        "你是泰语学习 App 的每日内容推荐助手。从候选词条和句子中各选一个作为今日推荐。"
-        "标准：①实用高频 ②有文化趣味 ③难度适中 ④词句主题呼应。"
-        "严格返回 JSON：{\"word_id\":\"词条word\",\"sentence_id\":句子id,\"reason\":\"理由\"}"
-    )
-    user = (
-        f"今天是 {date.today().strftime('%Y年%m月%d日')}，请推荐：\n\n"
-        f"【候选词条 {len(words)}个】\n{words_text}\n\n"
-        f"【候选句子 {len(sentences)}个】\n{sents_text}\n\n"
-        f"返回 JSON。"
-    )
-
-    try:
-        resp = requests.post(
-            f"{AI_API_BASE}/chat/completions",
-            headers={"Authorization": f"Bearer {AI_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": AI_MODEL,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-                "temperature": 0.7,
-                "max_tokens": 500,
-            },
-            timeout=60,
-        )
-        resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"]
-        a, b = content.find("{"), content.rfind("}") + 1
-        if a == -1 or b == 0:
-            log.warning(f"AI 返回非 JSON: {content[:100]}")
-            return None
-        pick = json.loads(content[a:b])
-        log.info(f"  AI 推荐: word={pick.get('word_id')}, sentence={pick.get('sentence_id')}")
-        log.info(f"  理由: {pick.get('reason', '')}")
-        return pick
-    except Exception as e:
-        log.warning(f"AI API 失败: {e}，降级到随机模式")
-        return None
-
-
-# =============================================================================
-# 写入 daily_picks 表（稳健 upsert：先查今天 → update 或 insert）
+# 写入 daily_picks
 # =============================================================================
 def save_daily_pick(client, word_id, sentence_id):
     today = date.today().isoformat()
@@ -263,30 +164,31 @@ def save_daily_pick(client, word_id, sentence_id):
         "daily_sentence_id": sentence_id,
     }
     try:
-        # 先查今天是否已有记录
         existing = (
             client.table("daily_picks")
             .select("id")
             .eq("pick_date", today)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
-        if getattr(existing, "data", None):
+        rows = getattr(existing, "data", []) or []
+        if rows:
             resp = (
                 client.table("daily_picks")
                 .update(row)
-                .eq("id", existing.data["id"])
+                .eq("id", rows[0]["id"])
                 .execute()
             )
         else:
             resp = client.table("daily_picks").insert(row).execute()
+
         if getattr(resp, "error", None):
-            log.error(f"  Upsert 失败: {resp.error}")
+            log.error(f"  写入失败: {resp.error}")
             return False
-        log.info(f"  ✅ 已写入每日推荐（pick_date={today}）")
+        log.info(f"  ✅ 已保存 {today} 每日推荐")
         return True
     except Exception as e:
-        log.error(f"  Upsert 异常: {e}")
+        log.error(f"  写入异常: {e}")
         return False
 
 
@@ -295,41 +197,39 @@ def save_daily_pick(client, word_id, sentence_id):
 # =============================================================================
 def main():
     log.info("=" * 50)
-    log.info(f"🚀 Daily Pick — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    log.info(f"   AI 模式: {'✅ 启用' if USE_AI else '❌ 随机'}")
+    log.info(f"🚀 ThaiDict Daily Pick — {datetime.now():%Y-%m-%d %H:%M:%S}")
 
     client = get_client()
     today = date.today().isoformat()
 
-    # 检查今天是否已有推荐（避免重复执行）
+    # 幂等：今天已有记录则跳过
     try:
-        existing = client.table("daily_picks").select("id").eq("pick_date", today).execute()
-        if existing.data and len(existing.data) > 0:
+        existing = (
+            client.table("daily_picks")
+            .select("id")
+            .eq("pick_date", today)
+            .limit(1)
+            .execute()
+        )
+        if getattr(existing, "data", []):
             log.info(f"⏭️  {today} 已有推荐记录，跳过")
             log.info("=" * 50)
             return
-    except Exception:
-        pass  # 表可能不存在，继续执行
+    except Exception as e:
+        log.warning(f"检查今日记录失败，继续执行: {e}")
 
-    pick = None
-    if USE_AI:
-        pick = ai_pick(client)
+    word_id = fetch_random_word(client)
+    sentence_id = fetch_random_sentence(client)
 
-    # AI 失败或不启用 → 随机选取
-    if not pick:
-        log.info("🎲 使用随机选取模式...")
-        word_id = fetch_random_word_id(client)
-        sentence_id = fetch_random_sentence_id(client)
-        if not word_id and not sentence_id:
-            log.error("❌ 未能获取任何推荐内容")
-            sys.exit(1)
-        pick = {"word_id": word_id, "sentence_id": sentence_id, "reason": "随机选取"}
+    if not word_id and not sentence_id:
+        log.error("❌ 未能获取任何推荐内容")
+        sys.exit(1)
 
-    ok = save_daily_pick(client, pick["word_id"], pick["sentence_id"])
+    ok = save_daily_pick(client, word_id, sentence_id)
     if ok:
-        log.info(f"✅ 已保存 {today} 每日推荐")
-        log.info(f"   word_id: {pick['word_id']}")
-        log.info(f"   sentence_id: {pick['sentence_id']}")
+        log.info(f"✅ 完成")
+        log.info(f"   word_id:     {word_id}")
+        log.info(f"   sentence_id: {sentence_id}")
     else:
         log.error("❌ 保存失败")
         sys.exit(1)

@@ -148,13 +148,7 @@ export default function LoginPage({ onForgot }) {
           title="GitHub 仓库"
           style={{ color: 'var(--c-p400)', display: 'inline-flex', opacity: 0.7 }}
         >
-          <img
-            src="/icons/logo.png"
-            alt="GitHub 仓库"
-            width={20}
-            height={20}
-            style={{ objectFit: 'contain', display: 'block' }}
-          />
+          <Github size={20} />
         </a>
       </div>
 
