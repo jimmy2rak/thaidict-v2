@@ -109,8 +109,10 @@ body {
 /* 动态视口高度：优先 dvh，回退 --app-height（Bug E-1） */
 #root {
   width: 100%;
-  /* 手机端 100vw，桌面端封顶 430px（手机框效果） */
-  max-width: min(var(--app-max-width), 100vw);
+  /* 桌面端封顶 430px；移动端宽度跟随父级（即视口可见宽度），绝不依赖 100vw。
+     —— iOS Safari 的 100vw 基于「布局视口」会比可见区域更宽，会让整页横向溢出、内容显得被放大
+        （VIA/Chrome 按可见视口计算 100vw 故正常）。改用 100% 跟随父级即可根治。 */
+  max-width: var(--app-max-width);
   margin: 0 auto;
   height: 100vh;
   height: 100dvh;

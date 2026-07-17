@@ -152,9 +152,9 @@ export default function LoginPage({ onForgot }) {
         </a>
       </div>
 
-      {/* Logo 完整展示、放大居中（2.5x：104 → 260） */}
+      {/* Logo 完整展示、放大居中 */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-        <MainLogo size={260} />
+        <MainLogo size={190} />
       </div>
 
       {/* Google / GitHub 圆形按钮：账号登录上方，作为首选 */}
