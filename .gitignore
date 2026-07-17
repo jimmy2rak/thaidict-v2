@@ -7,3 +7,7 @@ next-env.d.ts
 .env.local
 .DS_Store
 *.log
+
+# Python 缓存
+__pycache__/
+*.pyc
