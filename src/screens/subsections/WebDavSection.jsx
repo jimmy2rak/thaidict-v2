@@ -5,6 +5,7 @@ import { getUserSettings, saveUserSettings } from '../../lib/db/index.js'
 import { IconButton, Card, Spinner, Btn } from '../../components/UIComponents.jsx'
 import {
   webdavCategories, gatherExportData, downloadJson, uploadToWebdav, saveLocalBackup, fileNameFor, categoryLabel,
+  EXPORT_FORMATS, formatLabel, downloadWithFormat,
 } from '../../lib/webdav.js'
 
 const enc = new TextEncoder()
@@ -53,6 +54,7 @@ export default function WebDavSection({ onClose }) {
   const [unsupported, setUnsupported] = useState(false)
   const [picker, setPicker] = useState(null) // 'export' | 'upload' | null
   const [busy, setBusy] = useState(false)
+  const [fmt, setFmt] = useState('json') // 导出格式: json | md | docx
 
   useEffect(() => {
     if (!userId) return setLoading(false)
@@ -95,10 +97,9 @@ export default function WebDavSection({ onClose }) {
   const doExport = async (category) => {
     setBusy(true)
     try {
-      const payload = await gatherExportData(category, userId)
-      if (!payload) return toast('暂无数据可导出')
-      downloadJson(fileNameFor(category), payload)
-      toast(`已导出${categoryLabel(category)}`)
+      const res = await downloadWithFormat(category, userId, fmt)
+      if (res?.error) { toast(res.error) }
+      else toast(`已导出${categoryLabel(category)}（${formatLabel(fmt)}）`)
     } catch (e) {
       toast('导出失败：' + e.message)
     } finally {
@@ -112,12 +113,12 @@ export default function WebDavSection({ onClose }) {
     try {
       const payload = await gatherExportData(category, userId)
       if (!payload) return toast('暂无数据可上传')
-      const res = await uploadToWebdav(url, user, pass, fileNameFor(category), payload)
+      const res = await uploadToWebdav(url, user, pass, fileNameFor(category) + '.json', payload)
       if (res.ok) {
         toast(`已上传${categoryLabel(category)}到 WebDAV`)
       } else {
         // mock 回退：本地模拟备份，保证功能可演示
-        saveLocalBackup(fileNameFor(category), payload)
+        saveLocalBackup(fileNameFor(category) + '.json', payload)
         toast(`已模拟上传${categoryLabel(category)}（真实模式写入 WebDAV：${res.error}）`)
       }
     } catch (e) {
@@ -136,7 +137,7 @@ export default function WebDavSection({ onClose }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
         <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>WebDAV 备份</div>
+        <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>导出与备份</div>
         <div style={{ width: 38 }} />
       </div>
 
@@ -182,10 +183,30 @@ export default function WebDavSection({ onClose }) {
           <div style={{ background: 'var(--c-surface)', width: '100%', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 18, maxHeight: '70%', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-p800)' }}>
-                {picker === 'upload' ? '选择上传内容' : '选择导出内容'}
+                {picker === 'upload' ? '选择上传内容' : `选择导出内容 · ${formatLabel(fmt)}`}
               </div>
               <IconButton onClick={() => setPicker(null)} title="关闭"><X size={18} /></IconButton>
             </div>
+            {/* 导出时显示格式选择（上传仅 JSON） */}
+            {picker === 'export' && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                {EXPORT_FORMATS.map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFmt(f.key)}
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: 10,
+                      border: '1px solid ' + (fmt === f.key ? 'var(--c-primary)' : 'var(--c-p200)'),
+                      background: fmt === f.key ? 'color-mix(in srgb, var(--c-primary) 10%, transparent)' : 'var(--c-surface)',
+                      color: fmt === f.key ? 'var(--c-primary)' : 'var(--c-p500)',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {webdavCategories().map((c) => (
               <button
                 key={c.key}

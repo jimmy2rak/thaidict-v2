@@ -1,6 +1,6 @@
-// WebDAV 一键上传 / 导出工具（需求 #2b）。
-// 导出：将学习数据序列化为 JSON 并触发浏览器下载。
-// 上传：PUT 到 WebDAV 地址（mock 模式无真实服务器，失败则回退为本地模拟备份）。
+// WebDAV 一键上传 / 导出工具（需求 #2b / 阶段6 导出备份）。
+// 导出：多格式下线（JSON / Markdown / DOCX）。
+// 上传：PUT 到 WebDAV 地址（JSON，mock 模式无真实服务器，失败则回退为本地模拟备份）。
 import { getDiaries } from './db/diaries.js'
 import { getNotes } from './db/notes.js'
 import {
@@ -8,6 +8,7 @@ import {
   getCheckinHeatmapData, getUserRecentWords,
 } from './db/index.js'
 import { getGlobal, setGlobal } from './mock/store.js'
+import { downloadDocx } from './docx.js'
 
 const CATEGORY_LABELS = {
   diaries: '学习日记',
@@ -97,5 +98,77 @@ export function saveLocalBackup(filename, obj) {
 export function fileNameFor(category) {
   const d = new Date()
   const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
-  return `thaidict-${category}-${stamp}.json`
+  return `thaidict-${category}-${stamp}`
+}
+
+/* ---- 导出格式 ---- */
+export const EXPORT_FORMATS = [
+  { key: 'json', label: 'JSON', ext: '.json' },
+  { key: 'md', label: 'Markdown', ext: '.md' },
+  { key: 'docx', label: 'Word', ext: '.docx' },
+]
+
+export function formatLabel(key) {
+  return EXPORT_FORMATS.find(f => f.key === key)?.label || key
+}
+
+// 将导出的 payload 转为 Markdown 文本
+export function toMarkdown(payload) {
+  const { category, label, exported_at, data } = payload
+  const lines = [`# ${label} — 导出时间 ${new Date(exported_at).toLocaleString('zh-CN')}`, '']
+
+  if (category === 'diaries' || category === 'notes') {
+    const items = Array.isArray(data) ? data : []
+    items.forEach((item, i) => {
+      const title = item.title || item.date || `条目 ${i + 1}`
+      const body = item.content || item.body || item.text || JSON.stringify(item)
+      lines.push(`## ${title}`)
+      lines.push('')
+      lines.push(body)
+      lines.push('')
+    })
+  } else if (category === 'stats') {
+    lines.push('## 学习统计')
+    lines.push('')
+    if (data) {
+      for (const [k, v] of Object.entries(data)) {
+        const val = typeof v === 'object' ? JSON.stringify(v) : String(v)
+        lines.push(`- **${k}**：${val}`)
+      }
+    }
+    lines.push('')
+  }
+
+  return lines.join('\n')
+}
+
+// 下载 Markdown 文件
+export function downloadMarkdown(filename, text) {
+  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename + '.md'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+// 按格式触发下载
+export async function downloadWithFormat(category, userId, fmt) {
+  const payload = await gatherExportData(category, userId)
+  if (!payload) return { ok: false, error: '暂无数据可导出' }
+  const filename = fileNameFor(category)
+
+  if (fmt === 'json') {
+    downloadJson(filename, payload)
+  } else if (fmt === 'md') {
+    const md = toMarkdown(payload)
+    downloadMarkdown(filename, md)
+  } else if (fmt === 'docx') {
+    const md = toMarkdown(payload)
+    downloadDocx(filename, md)
+  }
+  return { ok: true }
 }

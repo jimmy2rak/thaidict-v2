@@ -35,13 +35,14 @@ export default function HomePage() {
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [daily, setDaily] = useState({ word: null, sentence: null })
+  const [dailyLoading, setDailyLoading] = useState(true)
   const [stats, setStats] = useState({ streak: 0, dict: 0, bookmarks: 0, monthly: 0 })
   const [refreshing, setRefreshing] = useState(false)
   const [phrasesOpen, setPhrasesOpen] = useState(false)
   const [phrase, setPhrase] = useState(null)
 
   useEffect(() => {
-    loadDailyPick().then(setDaily)
+    loadDailyPick().then(d => { setDaily(d); setDailyLoading(false) })
     if (userId) {
       Promise.all([
         getStreak(userId),
@@ -129,22 +130,30 @@ export default function HomePage() {
       ) : (
         <>
           {/* 每日一词 */}
-          <DailyWordCard
-            word={daily.word}
-            onRefresh={() => onRefresh('word')}
-            onTap={handleWordTap}
-            refreshing={refreshing}
-            rate={rate}
-            userId={userId}
-          />
+          {dailyLoading ? (
+            <DailyWordSkeleton />
+          ) : (
+            <DailyWordCard
+              word={daily.word}
+              onRefresh={() => onRefresh('word')}
+              onTap={handleWordTap}
+              refreshing={refreshing}
+              rate={rate}
+              userId={userId}
+            />
+          )}
           {/* 每日一句 */}
-          <DailySentenceCard
-            sentence={daily.sentence}
-            onRefresh={() => onRefresh('sentence')}
-            onOpen={() => daily.sentence && setSelectedSentence(daily.sentence)}
-            refreshing={refreshing}
-            userId={userId}
-          />
+          {dailyLoading ? (
+            <DailySentenceSkeleton />
+          ) : (
+            <DailySentenceCard
+              sentence={daily.sentence}
+              onRefresh={() => onRefresh('sentence')}
+              onOpen={() => daily.sentence && setSelectedSentence(daily.sentence)}
+              refreshing={refreshing}
+              userId={userId}
+            />
+          )}
           {/* 短语库入口 */}
           <Card onClick={() => setPhrasesOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
             <span style={{ width: 40, height: 40, borderRadius: 12, background: 'color-mix(in srgb, var(--c-gold) 14%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--c-gold)' }}>
@@ -293,5 +302,48 @@ function IconBtn({ children, onClick, disabled, active }) {
     >
       {children}
     </button>
+  )
+}
+
+/* ---- 骨架屏（每日推荐加载占位） ---- */
+function Skeleton({ width, height, style }) {
+  return (
+    <div
+      className="skeleton"
+      style={{ width, height, ...style }}
+    />
+  )
+}
+
+function DailyWordSkeleton() {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <Card style={{ padding: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Skeleton width={42} height={42} style={{ borderRadius: 10 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Skeleton width="60%" height={16} />
+            <Skeleton width="80%" height={13} />
+          </div>
+          <Skeleton width={28} height={28} style={{ borderRadius: 8 }} />
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+function DailySentenceSkeleton() {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, padding: '0 2px' }}>
+        <Skeleton width={80} height={20} />
+        <Skeleton width={34} height={34} style={{ borderRadius: 10 }} />
+      </div>
+      <Card style={{ padding: 14 }}>
+        <Skeleton width="90%" height={16} style={{ marginBottom: 8 }} />
+        <Skeleton width="75%" height={13} style={{ marginBottom: 4 }} />
+        <Skeleton width="50%" height={13} />
+      </Card>
+    </div>
   )
 }

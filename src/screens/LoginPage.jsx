@@ -134,14 +134,27 @@ export default function LoginPage({ onForgot }) {
   }
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: '48px 24px 24px', display: 'flex', flexDirection: 'column' }}>
-      {/* 品牌头部 */}
-      <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-          <MainLogo size={88} />
+    <div className="scroll-y" style={{ flex: 1, padding: '36px 24px 24px', display: 'flex', flexDirection: 'column' }}>
+      {/* 左上角品牌文字 + 右上角 GitHub 小猫图标 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div style={{ textAlign: 'left' }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-p800)', letterSpacing: 2 }}>词笺</div>
+          <div style={{ fontSize: 11, color: 'var(--c-p500)', marginTop: 2 }}>中泰双语智能词典</div>
         </div>
-        <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-p800)', letterSpacing: 2 }}>词笺</div>
-        <div style={{ fontSize: 13, color: 'var(--c-p500)', marginTop: 4 }}>中泰双语智能词典</div>
+        <a
+          href={GITHUB_REPO}
+          target="_blank"
+          rel="noreferrer"
+          title="GitHub 仓库"
+          style={{ color: 'var(--c-p400)', display: 'inline-flex', opacity: 0.7 }}
+        >
+          <Github size={20} />
+        </a>
+      </div>
+
+      {/* Logo 完整展示、放大居中 */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+        <MainLogo size={104} />
       </div>
 
       {/* Google / GitHub 圆形按钮：账号登录上方，作为首选 */}
@@ -325,18 +338,6 @@ export default function LoginPage({ onForgot }) {
 
       <div style={{ fontSize: 12, color: 'var(--c-p400)', textAlign: 'center', lineHeight: 1.6, marginTop: 16 }}>
         登录即表示同意《用户协议》与《隐私政策》
-      </div>
-
-      {/* 底部淡色 GitHub 仓库链接 */}
-      <div style={{ marginTop: 16, textAlign: 'center' }}>
-        <a
-          href={GITHUB_REPO}
-          target="_blank"
-          rel="noreferrer"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c-p400)', textDecoration: 'none', opacity: 0.8 }}
-        >
-          <Github size={14} /> 前往仓库
-        </a>
       </div>
     </div>
   )

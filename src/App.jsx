@@ -104,7 +104,7 @@ export default function App() {
 
   if (!app.isLoggedIn) {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--c-bg)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, background: 'var(--c-bg)' }}>
         {app.showReset ? (
           <ResetPasswordPage onBack={() => app.setShowReset(false)} />
         ) : (
@@ -116,13 +116,13 @@ export default function App() {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', width: '100%', minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minWidth: 0 }}>
         {(() => {
           const ActivePage = PAGES[app.page] || HomePage
           // key 随 page + pageEpoch 变化 → 每次切 tab 整页重挂载，WordBookPage 等页内 detail 状态被重置到一级
           return (
-            <div key={`${app.page}-${app.pageEpoch}`} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div key={`${app.page}-${app.pageEpoch}`} style={{ height: '100%', width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
               <ActivePage />
             </div>
           )
