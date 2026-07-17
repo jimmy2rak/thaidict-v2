@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Plus, NotebookPen, Clock } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
 import { getDiaries } from '../../lib/db/index.js'
-import { IconButton, Card, Spinner, EmptyState } from '../../components/UIComponents.jsx'
+import { IconButton, Card, Spinner, EmptyState, AsyncBadge } from '../../components/UIComponents.jsx'
+import { loadCache, saveCache } from '../../lib/asyncCache.js'
 
 const MOOD_EMOJI = { happy: '😊', neutral: '😐', sad: '😟', excited: '😆', tired: '😴' }
 
@@ -15,14 +16,24 @@ function fmtDate(iso) {
 export default function DiaryList({ onClose, onOpen, onNew }) {
   const app = useApp()
   const { userId } = app
-  const [list, setList] = useState([])
+  const [list, setList] = useState(() => (userId ? (loadCache('diary_list_' + userId) || []) : []))
   const [loading, setLoading] = useState(true)
+  const [bgLoading, setBgLoading] = useState(false)
 
   const load = () => {
     if (!userId) return setLoading(false)
+    // 先还原本地缓存即时显示，再后台静默拉取并刷新（与学习中心一致）
+    const cached = loadCache('diary_list_' + userId)
+    if (cached) {
+      setList(cached)
+      setLoading(false)
+    }
+    setBgLoading(true)
     getDiaries(userId).then((r) => {
       setList(r)
       setLoading(false)
+      setBgLoading(false)
+      saveCache('diary_list_' + userId, r)
     })
   }
   useEffect(load, [userId])

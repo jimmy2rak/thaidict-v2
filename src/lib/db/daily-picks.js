@@ -33,7 +33,11 @@ export async function loadDailyPick() {
     return data?.[0] ? normalizeSentence(data[0]) : null
   }
 
-  const { data: pick } = await safeQuery(supabase.from('daily_picks').select('*').maybeSingle())
+  // 按「当天日期」精确定位今日推荐（而非 maybeSingle，避免历史多行导致报错回退随机）
+  const today = new Date().toISOString().slice(0, 10)
+  const { data: pick } = await safeQuery(
+    supabase.from('daily_picks').select('*').eq('pick_date', today).maybeSingle()
+  )
   if (!pick) {
     const [word, sentence] = await Promise.all([fetchRandomWord(), fetchRandomSentence()])
     return { word, sentence }
@@ -102,9 +106,12 @@ export async function refreshDailyPick(type = 'both') {
     (type === 'word' || type === 'both') ? fetchRandomWord() : null,
     (type === 'sentence' || type === 'both') ? fetchRandomSentence() : null,
   ])
-  const current = await safeQuery(supabase.from('daily_picks').select('*').maybeSingle())
+  const today = new Date().toISOString().slice(0, 10)
+  const current = await safeQuery(
+    supabase.from('daily_picks').select('*').eq('pick_date', today).maybeSingle()
+  )
   const upsertData = {
-    pick_date: new Date().toISOString().slice(0, 10),
+    pick_date: today,
     daily_word_id: word?.word ?? current?.data?.daily_word_id ?? null,
     daily_sentence_id: sentence?.id ?? current?.data?.daily_sentence_id ?? null,
   }

@@ -32,6 +32,12 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="icon" href="/icons/icon-192.svg" type="image/svg+xml" sizes="any" />
         <link rel="apple-touch-icon" href="/icons/icon-512.svg" />
+        {/* 预置字体：在 React 挂载前同步读取本地缓存并设置 CSS 变量，避免刷新时「先闪系统字体再变自定义」（Issue 3） */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('thaidict-settings');if(!s)return;var c=JSON.parse(s);var ZH={'noto_sans_sc':"'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif",'noto_serif_sc':"'Noto Serif SC', serif"};var TH={'sarabun':"'Sarabun', sans-serif",'noto_sans_thai':"'Noto Sans Thai', 'Sarabun', sans-serif",'charm':"'Charm', 'Sarabun', cursive"};var r=document.documentElement;if(c.chinese_font&&ZH[c.chinese_font])r.style.setProperty('--zh-font',ZH[c.chinese_font]);if(c.thai_font&&TH[c.thai_font])r.style.setProperty('--th-font',TH[c.thai_font]);}catch(e){}})();`,
+          }}
+        />
         {/* Google Fonts：中文 Noto Sans/Serif SC，泰文 Noto Sans Thai / Sarabun / Charm */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

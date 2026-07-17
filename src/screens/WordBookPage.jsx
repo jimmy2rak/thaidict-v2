@@ -5,12 +5,13 @@ import {
   getUserRecentWords, getFolders, getFolderWords, getFolderSentences,
   getSentenceById, getWordBooks, getWordBook, getWordBookProgress, updateWordBookProgress,
 } from '../lib/db/index.js'
-import { Card, Badge, Spinner, EmptyState, IconButton } from '../components/UIComponents.jsx'
+import { Card, Badge, Spinner, EmptyState, IconButton, AsyncBadge } from '../components/UIComponents.jsx'
 import ThaiSentence from '../components/ThaiSentence.jsx'
 import PhraseCard from '../components/PhraseCard.jsx'
 import WordCard from '../components/WordCard.jsx'
 import { getWordByThai } from '../lib/db/index.js'
 import { transformWordData } from '../lib/utils.js'
+import { loadCache, saveCache } from '../lib/asyncCache.js'
 
 const TABS = [
   { key: 'recent', label: '最近', icon: Clock },
@@ -24,11 +25,15 @@ export default function WordBookPage() {
   const { userId, handleWordTap, navigateTo, toast } = app
   const [tab, setTab] = useState('recent')
   const [detail, setDetail] = useState(null) // {type, id, name}
+  const [bgLoading, setBgLoading] = useState(false)
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '12px 12px 6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 12px 6px' }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-p800)' }}>单词本</div>
+        <span style={{ marginLeft: 'auto' }}>
+          <AsyncBadge loading={bgLoading} />
+        </span>
       </div>
 
       <div style={{ display: 'flex', gap: 5, padding: '0 12px 6px' }}>
@@ -54,25 +59,27 @@ export default function WordBookPage() {
       </div>
 
       <div className="scroll-y" style={{ flex: 1, padding: '2px 14px 20px' }}>
-        {!detail && tab === 'recent' && <RecentTab userId={userId} onTap={handleWordTap} />}
-        {!detail && tab === 'wordfolders' && <FolderTab userId={userId} type="word" onOpen={(id, name) => setDetail({ type: 'wordfolder', id, name })} />}
-        {!detail && tab === 'sentencefolders' && <FolderTab userId={userId} type="sentence" onOpen={(id, name) => setDetail({ type: 'sentencefolder', id, name })} />}
-        {!detail && tab === 'books' && <BookTab onOpen={(id, name) => setDetail({ type: 'book', id, name })} />}
+        {!detail && tab === 'recent' && <RecentTab userId={userId} onTap={handleWordTap} onBg={setBgLoading} />}
+        {!detail && tab === 'wordfolders' && <FolderTab userId={userId} type="word" onOpen={(id, name) => setDetail({ type: 'wordfolder', id, name })} onBg={setBgLoading} />}
+        {!detail && tab === 'sentencefolders' && <FolderTab userId={userId} type="sentence" onOpen={(id, name) => setDetail({ type: 'sentencefolder', id, name })} onBg={setBgLoading} />}
+        {!detail && tab === 'books' && <BookTab onOpen={(id, name) => setDetail({ type: 'book', id, name })} onBg={setBgLoading} />}
 
-        {detail && detail.type === 'wordfolder' && <WordFolderDetail folderId={detail.id} name={detail.name} onBack={() => setDetail(null)} onTap={handleWordTap} />}
-        {detail && detail.type === 'sentencefolder' && <SentenceFolderDetail folderId={detail.id} name={detail.name} onBack={() => setDetail(null)} onOpen={navigateTo} />}
-        {detail && detail.type === 'book' && <BookDetail bookId={detail.id} name={detail.name} userId={userId} onBack={() => setDetail(null)} onTap={handleWordTap} toast={toast} />}
+        {detail && detail.type === 'wordfolder' && <WordFolderDetail folderId={detail.id} name={detail.name} onBack={() => setDetail(null)} onTap={handleWordTap} onBg={setBgLoading} />}
+        {detail && detail.type === 'sentencefolder' && <SentenceFolderDetail folderId={detail.id} name={detail.name} onBack={() => setDetail(null)} onOpen={navigateTo} onBg={setBgLoading} />}
+        {detail && detail.type === 'book' && <BookDetail bookId={detail.id} name={detail.name} userId={userId} onBack={() => setDetail(null)} onTap={handleWordTap} toast={toast} onBg={setBgLoading} />}
       </div>
     </div>
   )
 }
 
 // ---------- 最近查词 ----------
-function RecentTab({ userId, onTap }) {
-  const [list, setList] = useState(null)
+function RecentTab({ userId, onTap, onBg }) {
+  const KEY = 'wb_recent_' + (userId || 'anon')
+  const [list, setList] = useState(() => loadCache(KEY) || null)
   useEffect(() => {
     if (!userId) { setList([]); return }
     let cancelled = false
+    onBg && onBg(true)
     getUserRecentWords(userId, 100).then(async (rows) => {
       const enriched = await Promise.all(
         rows.map(async (r) => {
@@ -87,10 +94,10 @@ function RecentTab({ userId, onTap }) {
           return { word: r.word, romanization: '', meaning: '', count: r.lookup_count || 1 }
         })
       )
-      if (!cancelled) setList(enriched)
-    })
+      if (!cancelled) { setList(enriched); saveCache(KEY, enriched) }
+    }).catch(() => {}).finally(() => { if (!cancelled) onBg && onBg(false) })
     return () => { cancelled = true }
-  }, [userId])
+  }, [userId, onBg])
   if (list === null) return <CenterSpinner />
   if (list.length === 0) return <EmptyState icon="🕘" text="还没有查词记录" />
   return (
@@ -111,12 +118,19 @@ function RecentTab({ userId, onTap }) {
 }
 
 // ---------- 文件夹列表 ----------
-function FolderTab({ userId, type, onOpen }) {
-  const [folders, setFolders] = useState(null)
+function FolderTab({ userId, type, onOpen, onBg }) {
+  const KEY = 'wb_folders_' + type + '_' + (userId || 'anon')
+  const [folders, setFolders] = useState(() => loadCache(KEY) || null)
   useEffect(() => {
-    if (!userId) return setFolders([])
-    getFolders(userId).then((f) => setFolders(f.filter((x) => x.folder_type === type)))
-  }, [userId, type])
+    if (!userId) { setFolders([]); return }
+    let cancelled = false
+    onBg && onBg(true)
+    getFolders(userId)
+      .then((f) => { const v = f.filter((x) => x.folder_type === type); if (!cancelled) { setFolders(v); saveCache(KEY, v) } })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) onBg && onBg(false) })
+    return () => { cancelled = true }
+  }, [userId, type, onBg])
   if (folders === null) return <CenterSpinner />
   if (folders.length === 0) return <EmptyState icon="📁" text={type === 'word' ? '还没有单词夹，去词条页加入吧' : '还没有句子夹'} />
   return (
@@ -137,10 +151,12 @@ function FolderTab({ userId, type, onOpen }) {
 }
 
 // ---------- 单词夹详情 ----------
-function WordFolderDetail({ folderId, name, onBack, onTap }) {
-  const [words, setWords] = useState(null)
+function WordFolderDetail({ folderId, name, onBack, onTap, onBg }) {
+  const KEY = 'wb_folder_words_' + folderId
+  const [words, setWords] = useState(() => loadCache(KEY) || null)
   useEffect(() => {
     let cancelled = false
+    onBg && onBg(true)
     getFolderWords(folderId).then(async (raw) => {
       const enriched = await Promise.all(
         raw.map(async (w) => {
@@ -155,10 +171,10 @@ function WordFolderDetail({ folderId, name, onBack, onTap }) {
           return { word: w.word, romanization: '', meaning: '' }
         })
       )
-      if (!cancelled) setWords(enriched)
-    })
+      if (!cancelled) { setWords(enriched); saveCache(KEY, enriched) }
+    }).catch(() => {}).finally(() => { if (!cancelled) onBg && onBg(false) })
     return () => { cancelled = true }
-  }, [folderId])
+  }, [folderId, onBg])
   if (words === null) return <DetailShell name={name} onBack={onBack}><CenterSpinner /></DetailShell>
   return (
     <DetailShell name={name} onBack={onBack}>
@@ -181,14 +197,18 @@ function WordFolderDetail({ folderId, name, onBack, onTap }) {
 }
 
 // ---------- 句子夹详情 ----------
-function SentenceFolderDetail({ folderId, name, onBack, onOpen }) {
-  const [sentences, setSentences] = useState(null)
+function SentenceFolderDetail({ folderId, name, onBack, onOpen, onBg }) {
+  const KEY = 'wb_folder_sentences_' + folderId
+  const [sentences, setSentences] = useState(() => loadCache(KEY) || null)
   useEffect(() => {
+    let cancelled = false
+    onBg && onBg(true)
     getFolderSentences(folderId).then(async (rels) => {
-      const arr = await Promise.all(rels.map((r) => getSentenceById(r.sentence_id)))
-      setSentences(arr.filter(Boolean))
-    })
-  }, [folderId])
+      const arr = (await Promise.all(rels.map((r) => getSentenceById(r.sentence_id)))).filter(Boolean)
+      if (!cancelled) { setSentences(arr); saveCache(KEY, arr) }
+    }).catch(() => {}).finally(() => { if (!cancelled) onBg && onBg(false) })
+    return () => { cancelled = true }
+  }, [folderId, onBg])
   if (sentences === null) return <DetailShell name={name} onBack={onBack}><CenterSpinner /></DetailShell>
   return (
     <DetailShell name={name} onBack={onBack}>
@@ -209,17 +229,24 @@ function SentenceFolderDetail({ folderId, name, onBack, onOpen }) {
 }
 
 // ---------- 单词书详情（功能 3.8） ----------
-function BookDetail({ bookId, name, userId, onBack, onTap, toast }) {
-  const [book, setBook] = useState(null)
-  const [progress, setProgress] = useState(null)
+function BookDetail({ bookId, name, userId, onBack, onTap, toast, onBg }) {
+  const KEY = 'wb_book_' + bookId
+  const KEY_PROG = 'wb_book_prog_' + bookId + '_' + (userId || 'anon')
+  const [book, setBook] = useState(() => loadCache(KEY) || null)
+  const [progress, setProgress] = useState(() => loadCache(KEY_PROG) || null)
   useEffect(() => {
+    let cancelled = false
+    onBg && onBg(true)
     ;(async () => {
       const b = await getWordBook(bookId)
-      const p = await getWordBookProgress(userId, bookId)
-      setBook(b)
-      setProgress(p)
-    })()
-  }, [bookId, userId])
+      const p = userId ? await getWordBookProgress(userId, bookId) : null
+      if (!cancelled) {
+        setBook(b); saveCache(KEY, b)
+        setProgress(p); if (p) saveCache(KEY_PROG, p)
+      }
+    })().catch(() => {}).finally(() => { if (!cancelled) onBg && onBg(false) })
+    return () => { cancelled = true }
+  }, [bookId, userId, onBg])
   if (!book) return <DetailShell name={name} onBack={onBack}><CenterSpinner /></DetailShell>
 
   const entries = book.entries || []
@@ -227,7 +254,9 @@ function BookDetail({ bookId, name, userId, onBack, onTap, toast }) {
 
   const markComplete = async () => {
     await updateWordBookProgress(userId, bookId, { last_word_index: entries.length, completed: true })
-    setProgress({ last_word_index: entries.length, completed: true })
+    const np = { last_word_index: entries.length, completed: true }
+    setProgress(np)
+    saveCache(KEY_PROG, np)
     toast('已标记完成 🎉')
   }
 
@@ -255,9 +284,17 @@ function BookDetail({ bookId, name, userId, onBack, onTap, toast }) {
 }
 
 // ---------- 单词书列表 ----------
-function BookTab({ onOpen }) {
-  const [books, setBooks] = useState(null)
-  useEffect(() => { getWordBooks().then(setBooks) }, [])
+function BookTab({ onOpen, onBg }) {
+  const [books, setBooks] = useState(() => loadCache('wb_books') || null)
+  useEffect(() => {
+    let cancelled = false
+    onBg && onBg(true)
+    getWordBooks()
+      .then((b) => { if (!cancelled) { setBooks(b); saveCache('wb_books', b) } })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) onBg && onBg(false) })
+    return () => { cancelled = true }
+  }, [onBg])
   if (books === null) return <CenterSpinner />
   if (books.length === 0) return <EmptyState icon="📚" text="还没有单词书" />
   return (

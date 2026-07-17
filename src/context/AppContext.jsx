@@ -14,6 +14,8 @@ import {
   CHINESE_FONTS,
   THAI_FONTS,
   getFontFamily,
+  loadSettingsCache,
+  saveSettingsCache,
   getUserRole,
   getActiveAiApi,
 } from '../lib/db/index.js'
@@ -73,8 +75,18 @@ export function AppProvider({ children }) {
   )
 
   // ---------- 字体 ----------
-  const [chineseFont, setChineseFont] = useState('noto_sans_sc')
-  const [thaiFont, setThaiFont] = useState('noto_sans_thai')
+  // 初始值同步读取本地缓存（与 DEFAULTS 对齐为 serif/sarabun），
+  // 配合 app/layout.jsx 的 <head> 内联脚本，实现「先展示缓存字体 → 再异步拉取自定义」且首屏零闪烁。
+  const [chineseFont, setChineseFont] = useState(() => {
+    if (typeof window === 'undefined') return 'noto_serif_sc'
+    const c = loadSettingsCache()
+    return (c && c.chinese_font) || 'noto_serif_sc'
+  })
+  const [thaiFont, setThaiFont] = useState(() => {
+    if (typeof window === 'undefined') return 'sarabun'
+    const c = loadSettingsCache()
+    return (c && c.thai_font) || 'sarabun'
+  })
 
   // ---------- 角色权限 ----------
   const [userRole, setUserRole] = useState({ role: 'user', permissions: [] })
@@ -190,6 +202,7 @@ export function AppProvider({ children }) {
     let cancelled = false
     getUserSettings(userId).then((s) => {
       if (cancelled) return
+      saveSettingsCache(s)
       if (s.chinese_font) setChineseFont(s.chinese_font)
       if (s.thai_font) setThaiFont(s.thai_font)
     })

@@ -32,6 +32,27 @@ export function getFontFamily(fontKey, fallback) {
   return all.find((f) => f.key === fontKey)?.family || fallback
 }
 
+// 设置本地缓存：解决「刷新后先闪一下系统字体再变自定义」（Issue 3）。
+// 在 app/layout.jsx 的 <head> 内联脚本里同步读取本缓存并预置 CSS 变量，
+// 实现「先展示缓存字体 → 再异步拉取用户自定义」且首屏零闪烁。
+const SETTINGS_CACHE_KEY = 'thaidict-settings'
+export function loadSettingsCache() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_CACHE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+export function saveSettingsCache(settings) {
+  try {
+    localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings))
+  } catch {
+    /* 存储不可用时静默忽略 */
+  }
+}
+
 export async function getUserSettings(userId) {
   if (!isSupabaseConfigured) {
     const s = getUserColl(userId, 'settings', null)
