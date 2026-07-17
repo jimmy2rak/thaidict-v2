@@ -10,7 +10,8 @@ import {
 } from '../lib/db/index.js'
 import { getCSTWeekday, getTodayCST } from '../lib/utils.js'
 import { typeLabels } from '../lib/taskTypes.js'
-import { Card, Spinner, EmptyState, Btn } from '../components/UIComponents.jsx'
+import { Card, Spinner, EmptyState, Btn, AsyncBadge } from '../components/UIComponents.jsx'
+import { loadCache, saveCache } from '../lib/asyncCache.js'
 
 import StatsSection from './subsections/StatsSection.jsx'
 import PracticeSection from './subsections/PracticeSection.jsx'
@@ -55,12 +56,15 @@ function MainView({ userId, setView }) {
   const [heatmap, setHeatmap] = useState([])
   const [weeklyMins, setWeeklyMins] = useState([0, 0, 0, 0, 0, 0, 0])
   const [plan, setPlan] = useState(null)
+  const [bgLoading, setBgLoading] = useState(false)
   const today = getTodayCST()
   const weekday = getCSTWeekday()
 
   const dateLabel = new Date().toLocaleDateString('zh-CN', {
     timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', weekday: 'long',
   })
+
+  const CACHE_KEY = 'learn_main'
 
   const refresh = async () => {
     if (!userId) return
@@ -78,8 +82,24 @@ function MainView({ userId, setView }) {
     setHeatmap(h)
     setWeeklyMins(wm)
     setPlan(p)
+    saveCache(CACHE_KEY, { tasks: t, completed: c, streak: s, heatmap: h, weeklyMins: wm, plan: p })
   }
-  useEffect(() => { refresh() }, [userId]) // eslint-disable-line
+
+  // 常态化：先还原本地缓存即时显示，再后台静默拉取并实时更新
+  useEffect(() => {
+    if (!userId) return
+    const cached = loadCache(CACHE_KEY)
+    if (cached) {
+      setTasks(cached.tasks ?? null)
+      setCompleted(cached.completed ?? [])
+      setStreak(cached.streak ?? 0)
+      setHeatmap(cached.heatmap ?? [])
+      setWeeklyMins(cached.weeklyMins ?? [0, 0, 0, 0, 0, 0, 0])
+      setPlan(cached.plan ?? null)
+    }
+    setBgLoading(true)
+    refresh().finally(() => setBgLoading(false))
+  }, [userId]) // eslint-disable-line
 
   const todayTasks = (tasks || []).filter((t) => (t.plan_days || []).includes(weekday))
   const doneCount = todayTasks.filter((t) => completed.includes(t.id)).length
@@ -127,8 +147,11 @@ function MainView({ userId, setView }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <Dumbbell size={20} color="var(--c-primary)" />
         <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-p800)' }}>学习中心</span>
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--c-gold)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Flame size={14} /> 连续 {streak} 天
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--c-gold)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <AsyncBadge loading={bgLoading} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Flame size={14} /> 连续 {streak} 天
+          </span>
         </span>
       </div>
 

@@ -161,6 +161,17 @@ export function Spinner({ size = 20, color = 'var(--c-teal)' }) {
   )
 }
 
+// 异步加载指示：右上角转圈 + “检测更改...”，后台拉取时显示，完成后由调用方控制隐藏。
+export function AsyncBadge({ loading = false, color = 'var(--c-teal)', size = 14 }) {
+  if (!loading) return null
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--c-p500)', fontWeight: 500 }}>
+      <Spinner size={size} color={color} />
+      检测更改…
+    </span>
+  )
+}
+
 export function SectionTitle({ children, action }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 2px 8px' }}>

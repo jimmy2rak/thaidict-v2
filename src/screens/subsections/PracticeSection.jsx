@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext.jsx'
 import { getBookmarks, getWordByThai, savePracticeRecord, recordWrongWord } from '../../lib/db/index.js'
 import { getGlobal } from '../../lib/mock/store.js'
 import { speak } from '../../utils/tts.js'
-import { IconButton, Card, Spinner, Btn } from '../../components/UIComponents.jsx'
+import { IconButton, Card, Spinner, Btn, AsyncBadge } from '../../components/UIComponents.jsx'
 
 const PRESET = ['กิน', 'ไป', 'ดี', 'น้ำ', 'อาหาร', 'ข้าว', 'ชอบ', 'เรียน', 'บ้าน', 'คน', 'วัน', 'ภาษาไทย', 'รัก', 'ใหม่', 'แพง', 'สวัสดี']
 const Q_COUNT = 5
@@ -122,7 +122,7 @@ export default function PracticeSection({ onClose }) {
   if (phase === 'start') {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <Header onClose={onClose} title="练习测验" />
+        <Header onClose={onClose} title="练习测验" loading={loading} />
         <div className="scroll-y" style={{ flex: 1, padding: 16 }}>
           <Card style={{ marginBottom: 16, textAlign: 'center', padding: 20 }}>
             <div style={{ fontSize: 15, color: 'var(--c-p600)' }}>选择练习模式，共 {Q_COUNT} 题</div>
@@ -140,7 +140,7 @@ export default function PracticeSection({ onClose }) {
   if (phase === 'quiz' && current) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <Header onClose={onClose} title={`练习 ${qIndex + 1}/${Q_COUNT}`} />
+        <Header onClose={onClose} title={`练习 ${qIndex + 1}/${Q_COUNT}`} loading={loading} />
         <div className="scroll-y" style={{ flex: 1, padding: 16 }}>
           <Card style={{ marginBottom: 16, textAlign: 'center', padding: 22 }}>
             {mode === 'th_zh' ? (
@@ -190,7 +190,7 @@ export default function PracticeSection({ onClose }) {
   // result
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Header onClose={onClose} title="练习结果" />
+      <Header onClose={onClose} title="练习结果" loading={loading} />
       <div className="scroll-y" style={{ flex: 1, padding: 16 }}>
         <Card style={{ marginBottom: 14, textAlign: 'center', padding: 28 }}>
           <div style={{ fontSize: 44, fontWeight: 800, color: 'var(--c-teal)' }}>{finalCorrect}/{Q_COUNT}</div>
@@ -212,12 +212,14 @@ export default function PracticeSection({ onClose }) {
   )
 }
 
-function Header({ onClose, title }) {
+function Header({ onClose, title, loading }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
       <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
       <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>{title}</div>
-      <div style={{ width: 38 }} />
+      <div style={{ width: 38, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+        <AsyncBadge loading={loading} />
+      </div>
     </div>
   )
 }

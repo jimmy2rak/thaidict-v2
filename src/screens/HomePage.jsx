@@ -18,6 +18,7 @@ import {
 } from '../lib/db/index.js'
 import { speak } from '../utils/tts.js'
 import { transformWordData } from '../lib/utils.js'
+import { loadCache, saveCache } from '../lib/asyncCache.js'
 import { Card, Badge, Spinner, EmptyState } from '../components/UIComponents.jsx'
 import ThaiSentence from '../components/ThaiSentence.jsx'
 import PhraseCard from '../components/PhraseCard.jsx'
@@ -41,7 +42,14 @@ export default function HomePage() {
   const [phrase, setPhrase] = useState(null)
 
   useEffect(() => {
-    loadDailyPick().then(d => { setDaily(d); setDailyLoading(false) })
+    // 常态化展示：先显示本地缓存（若有），后台静默拉取今日推荐，有更新再覆盖
+    const cached = loadCache('daily_picks')
+    if (cached) { setDaily(cached); setDailyLoading(false) }
+    loadDailyPick().then((d) => {
+      setDaily(d)
+      setDailyLoading(false)
+      saveCache('daily_picks', d)
+    })
     if (userId) {
       Promise.all([
         getStreak(userId),
@@ -75,6 +83,7 @@ export default function HomePage() {
     setRefreshing(true)
     const d = await refreshDailyPick(type)
     setDaily(d)
+    saveCache('daily_picks', d)
     setRefreshing(false)
   }
 

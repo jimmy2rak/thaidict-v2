@@ -9,7 +9,8 @@ import {
 import { callAiProxy } from '../../lib/ai-proxy.js'
 import { getTodayCST, getCSTWeekday } from '../../lib/utils.js'
 import { TASK_TYPES, typeLabels } from '../../lib/taskTypes.js'
-import { IconButton, Card, Spinner, Badge } from '../../components/UIComponents.jsx'
+import { IconButton, Card, Spinner, Badge, AsyncBadge } from '../../components/UIComponents.jsx'
+import { loadCache, saveCache } from '../../lib/asyncCache.js'
 
 const WEEK = [
   { v: 1, l: '一' }, { v: 2, l: '二' }, { v: 3, l: '三' }, { v: 4, l: '四' },
@@ -21,8 +22,11 @@ const DURATIONS = [5, 10, 15, 20, 30, 45, 60]
 export default function AdjustPlanSection({ onClose }) {
   const app = useApp()
   const { userId, toast } = app
-  const [loading, setLoading] = useState(true)
-  const [tasks, setTasks] = useState([])
+  const CACHE_KEY = 'adjust_plan'
+  const cachedTasks = loadCache(CACHE_KEY)
+  const [loading, setLoading] = useState(!cachedTasks)
+  const [tasks, setTasks] = useState(cachedTasks || [])
+  const [bgLoading, setBgLoading] = useState(false)
 
   // 今日数据卡片
   const [dateLabel, setDateLabel] = useState('')
@@ -47,6 +51,7 @@ export default function AdjustPlanSection({ onClose }) {
 
   const load = async () => {
     if (!userId) return setLoading(false)
+    setBgLoading(true)
     const today = getTodayCST()
     const weekday = getCSTWeekday()
     const all = await getCheckinTasks(userId)
@@ -59,6 +64,8 @@ export default function AdjustPlanSection({ onClose }) {
     setStreak(await getStreak(userId))
     setTasks(all)
     setLoading(false)
+    setBgLoading(false)
+    saveCache(CACHE_KEY, all)
   }
   useEffect(() => { load() }, [userId]) // eslint-disable-line
 
@@ -219,7 +226,9 @@ export default function AdjustPlanSection({ onClose }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
         <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>调整学习计划</div>
-        <div style={{ width: 38 }} />
+        <div style={{ width: 38, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <AsyncBadge loading={bgLoading} />
+        </div>
       </div>
 
       <div className="scroll-y" style={{ flex: 1, padding: 14 }}>

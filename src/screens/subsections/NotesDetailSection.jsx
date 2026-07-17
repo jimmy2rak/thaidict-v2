@@ -2,22 +2,29 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { ArrowLeft, Plus, StickyNote, ChevronRight, Search, X, Tag } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
 import { getNotes } from '../../lib/db/index.js'
-import { IconButton, Card, Spinner, EmptyState, Badge } from '../../components/UIComponents.jsx'
+import { IconButton, Card, Spinner, EmptyState, Badge, AsyncBadge } from '../../components/UIComponents.jsx'
+import { loadCache, saveCache } from '../../lib/asyncCache.js'
 
 export default function NotesDetailSection({ onClose, onEdit }) {
   const app = useApp()
   const { userId } = app
-  const [notes, setNotes] = useState([])
-  const [loading, setLoading] = useState(true)
+  const CACHE_KEY = 'notes'
+  const cachedNotes = loadCache(CACHE_KEY)
+  const [notes, setNotes] = useState(cachedNotes || [])
+  const [loading, setLoading] = useState(!cachedNotes)
+  const [bgLoading, setBgLoading] = useState(false)
   const [query, setQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [activeTag, setActiveTag] = useState(null)
 
   const load = () => {
     if (!userId) return setLoading(false)
+    setBgLoading(true)
     getNotes(userId).then((n) => {
       setNotes(n)
       setLoading(false)
+      setBgLoading(false)
+      saveCache(CACHE_KEY, n)
     })
   }
   useEffect(load, [userId])
@@ -53,6 +60,7 @@ export default function NotesDetailSection({ onClose, onEdit }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
         <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>我的笔记</div>
+        <AsyncBadge loading={bgLoading} />
         <IconButton onClick={() => setShowSearch((s) => !s)} title="搜索" active={showSearch}><Search size={18} /></IconButton>
         <IconButton onClick={() => onEdit && onEdit({ id: null, word: '', content: '', tags: [] })} title="新建笔记" active={false}><Plus size={22} /></IconButton>
       </div>

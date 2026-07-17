@@ -32,6 +32,7 @@ export default function DiaryList({ onClose, onOpen, onNew }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
         <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>学习日记</div>
+        <AsyncBadge loading={bgLoading} />
         <button onClick={() => onNew && onNew()} style={{ width: 38, display: 'flex', justifyContent: 'center', color: 'var(--c-teal)' }}>
           <Plus size={20} />
         </button>

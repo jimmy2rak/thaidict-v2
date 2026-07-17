@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Award, Lock } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
 import { getAchievements, ACHIEVEMENT_DEFS } from '../../lib/db/index.js'
-import { IconButton, Card, Spinner, EmptyState } from '../../components/UIComponents.jsx'
+import { IconButton, Card, Spinner, EmptyState, AsyncBadge } from '../../components/UIComponents.jsx'
+import { loadCache, saveCache } from '../../lib/asyncCache.js'
 
 const ICONS = {
   flame: '🔥',
@@ -14,14 +15,21 @@ const ICONS = {
 export default function AchievementsSection({ onClose }) {
   const app = useApp()
   const { userId } = app
-  const [unlocked, setUnlocked] = useState([])
-  const [loading, setLoading] = useState(true)
+  const CACHE_KEY = 'achievements'
+  const cached = loadCache(CACHE_KEY)
+  const [unlocked, setUnlocked] = useState(() => new Set(cached || []))
+  const [loading, setLoading] = useState(!cached)
+  const [bgLoading, setBgLoading] = useState(false)
 
   useEffect(() => {
     if (!userId) return setLoading(false)
+    setBgLoading(true)
     getAchievements(userId).then((list) => {
-      setUnlocked(new Set(list.map((a) => a.badge_key)))
+      const keys = list.map((a) => a.badge_key)
+      setUnlocked(new Set(keys))
       setLoading(false)
+      setBgLoading(false)
+      saveCache(CACHE_KEY, keys)
     })
   }, [userId])
 
@@ -38,7 +46,9 @@ export default function AchievementsSection({ onClose }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
         <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>我的成就</div>
-        <div style={{ width: 38 }} />
+        <div style={{ width: 38, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <AsyncBadge loading={bgLoading} />
+        </div>
       </div>
 
       <div className="scroll-y" style={{ flex: 1, padding: 16 }}>

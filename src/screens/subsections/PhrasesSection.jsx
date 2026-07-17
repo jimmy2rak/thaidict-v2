@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useApp } from '../../context/AppContext.jsx'
 import { getSentencesByCategory, getSentenceBookmarks, bookmarkSentence, removeSentenceBookmark } from '../../lib/db/index.js'
@@ -31,19 +31,43 @@ const CATEGORIES = [
 ]
 const CAT_LABEL = { idioms: '成语', buddhist: '佛学', daily: '日常' }
 
+// 跨重挂载缓存：进入短语详情子页时 PhrasesSection 会被卸载，退回时再挂载；
+// 用模块级变量保留分类、已加载卡片与滚动位置，避免退回后整页刷新并回到第一条。
+let phrasesCache = null
+
 export default function PhrasesSection({ onClose, onOpen }) {
   const app = useApp()
   const { userId, handleWordTap } = app
 
-  const [category, setCategory] = useState(null)
-  const [list, setList] = useState([])
-  const [loading, setLoading] = useState(true)
+  // 模块级缓存：从子页（短语详情）退回时保留已加载卡片与滚动位置；
+  // 仅当点击左上角「返回」完全退出到首页时才清空（见 handleClose）。
+  const [category, setCategory] = useState(() => (phrasesCache ? phrasesCache.category : null))
+  const [list, setList] = useState(() => (phrasesCache && phrasesCache.lists[phrasesCache.category ?? 'all'] ? phrasesCache.lists[phrasesCache.category ?? 'all'] : []))
+  const [loading, setLoading] = useState(() => !(phrasesCache && phrasesCache.lists[phrasesCache.category ?? 'all']))
   const [bookmarks, setBookmarks] = useState(new Set())
+  const scrollRef = useRef(null)
+  const restoredRef = useRef(false)
 
-  // 分类列表：基于已加载的真实数据动态生成（不再读 mock localStorage）
+  // 分类列表：始终展示全部分类（toggle 样式），不随数据有无而隐藏
   useEffect(() => {
+    const key = category ?? 'all'
+    // 命中缓存：直接还原，无需重新拉取（从子页退回时保留位置）
+    if (phrasesCache && phrasesCache.lists[key]) {
+      setList(phrasesCache.lists[key])
+      setLoading(false)
+      if (!restoredRef.current && scrollRef.current && phrasesCache.scrollY != null) {
+        requestAnimationFrame(() => {
+          if (scrollRef.current) scrollRef.current.scrollTop = phrasesCache.scrollY
+        })
+        restoredRef.current = true
+      }
+      return
+    }
     setLoading(true)
     getSentencesByCategory(category, userId).then((r) => {
+      if (!phrasesCache) phrasesCache = { category: null, lists: {}, scrollY: 0 }
+      phrasesCache.category = category
+      phrasesCache.lists[key] = r
       setList(r)
       setLoading(false)
     })
@@ -55,11 +79,6 @@ export default function PhrasesSection({ onClose, onOpen }) {
       setBookmarks(new Set((arr || []).map((b) => b.sentence_id || b.id)))
     })
   }, [userId])
-
-  const visibleCats = useMemo(() => {
-    const present = new Set(list.map((s) => s.category).filter(Boolean))
-    return CATEGORIES.filter((c) => c.key === null || present.has(c.key))
-  }, [list])
 
   const handleBookmark = async (sentenceId) => {
     if (!userId) return app.toast('请先登录')
@@ -81,7 +100,7 @@ export default function PhrasesSection({ onClose, onOpen }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 6px', borderBottom: '1px solid var(--c-p100)' }}>
-        <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
+        <IconButton onClick={() => { phrasesCache = null; onClose() }} title="返回"><ArrowLeft size={20} /></IconButton>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>短语库</div>
         <div style={{ width: 38 }} />
       </div>
@@ -95,7 +114,7 @@ export default function PhrasesSection({ onClose, onOpen }) {
           overflow: 'hidden',
           background: 'var(--c-surface)',
         }}>
-          {visibleCats.map((c) => (
+          {CATEGORIES.map((c) => (
             <button
               key={c.key ?? 'all'}
               onClick={() => setCategory(c.key)}
@@ -116,7 +135,7 @@ export default function PhrasesSection({ onClose, onOpen }) {
         </div>
       </div>
 
-      <div className="scroll-y" style={{ flex: 1, padding: '0 14px 14px' }}>
+      <div className="scroll-y" ref={scrollRef} onScroll={(e) => { if (phrasesCache) phrasesCache.scrollY = e.currentTarget.scrollTop }} style={{ flex: 1, padding: '0 14px 14px' }}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>
         ) : list.length === 0 ? (

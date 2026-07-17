@@ -10,7 +10,8 @@ import {
   getCheckinHeatmapData, getUserRecentWords,
 } from '../../lib/db/index.js'
 import { getGlobal } from '../../lib/mock/store.js'
-import { IconButton, Card, Spinner } from '../../components/UIComponents.jsx'
+import { IconButton, Card, Spinner, AsyncBadge } from '../../components/UIComponents.jsx'
+import { loadCache, saveCache } from '../../lib/asyncCache.js'
 
 const PIE_COLORS = ['#9FB08E', '#C2A878', '#C08A7A', '#8FA3B0', '#C9A86A', '#9C8467']
 const WEEK_LABELS = ['一', '二', '三', '四', '五', '六', '日']
@@ -18,14 +19,18 @@ const WEEK_LABELS = ['一', '二', '三', '四', '五', '六', '日']
 export default function StatsSection({ onClose }) {
   const app = useApp()
   const { userId } = app
-  const [loading, setLoading] = useState(true)
-  const [overview, setOverview] = useState({ streak: 0, bookmarks: 0, practice: { count: 0, accuracy: 0, total: 0 } })
-  const [weekly, setWeekly] = useState([])
-  const [heatmap, setHeatmap] = useState([])
-  const [pie, setPie] = useState([])
+  const CACHE_KEY = 'stats'
+  const cached = loadCache(CACHE_KEY)
+  const [loading, setLoading] = useState(!cached)
+  const [overview, setOverview] = useState(cached?.overview || { streak: 0, bookmarks: 0, practice: { count: 0, accuracy: 0, total: 0 } })
+  const [weekly, setWeekly] = useState(cached?.weekly || [])
+  const [heatmap, setHeatmap] = useState(cached?.heatmap || [])
+  const [pie, setPie] = useState(cached?.pie || [])
+  const [bgLoading, setBgLoading] = useState(false)
 
   useEffect(() => {
     if (!userId) return setLoading(false)
+    setBgLoading(true)
     ;(async () => {
       const [streak, bms, pstats, wk, heat, recent] = await Promise.all([
         getStreak(userId),
@@ -35,8 +40,10 @@ export default function StatsSection({ onClose }) {
         getCheckinHeatmapData(userId, 35),
         getUserRecentWords(userId, 200),
       ])
-      setOverview({ streak, bookmarks: bms.length, practice: pstats })
-      setWeekly(wk.map((v, i) => ({ name: WEEK_LABELS[i], 分钟: v })))
+      const overviewData = { streak, bookmarks: bms.length, practice: pstats }
+      const weeklyData = wk.map((v, i) => ({ name: WEEK_LABELS[i], 分钟: v }))
+      setOverview(overviewData)
+      setWeekly(weeklyData)
       setHeatmap(heat)
       // 词性分布（来自最近查词；无则取词典样本）
       const dist = {}
@@ -50,8 +57,11 @@ export default function StatsSection({ onClose }) {
           dist[pos] = (dist[pos] || 0) + 1
         })
       }
-      setPie(Object.entries(dist).map(([name, value]) => ({ name, value })))
+      const pieData = Object.entries(dist).map(([name, value]) => ({ name, value }))
+      setPie(pieData)
       setLoading(false)
+      setBgLoading(false)
+      saveCache(CACHE_KEY, { overview: overviewData, weekly: weeklyData, heatmap: heat, pie: pieData })
     })()
   }, [userId])
 
@@ -70,7 +80,9 @@ export default function StatsSection({ onClose }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 12px 8px', borderBottom: '1px solid var(--c-p100)' }}>
         <IconButton onClick={onClose} title="返回"><ArrowLeft size={20} /></IconButton>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--c-p800)' }}>学习统计</div>
-        <div style={{ width: 38 }} />
+        <div style={{ width: 38, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <AsyncBadge loading={bgLoading} />
+        </div>
       </div>
 
       <div className="scroll-y" style={{ flex: 1, padding: 16 }}>
