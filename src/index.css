@@ -95,8 +95,10 @@ html,
 body {
   height: 100%;
   width: 100%;
+  max-width: 100%;
   /* 防横向溢出导致移动端需手动缩小：任何超出视口的宽度都被裁掉 */
   overflow-x: hidden;
+  overscroll-behavior-x: none;
   font-family: var(--zh-font), var(--th-font), sans-serif;
   background: var(--c-bg);
   color: var(--c-p800);
@@ -107,7 +109,8 @@ body {
 /* 动态视口高度：优先 dvh，回退 --app-height（Bug E-1） */
 #root {
   width: 100%;
-  max-width: var(--app-max-width);
+  /* 手机端 100vw，桌面端封顶 430px（手机框效果） */
+  max-width: min(var(--app-max-width), 100vw);
   margin: 0 auto;
   height: 100vh;
   height: 100dvh;
@@ -120,6 +123,8 @@ body {
   min-width: 0;
   background: var(--c-bg);
   box-shadow: 0 0 40px rgba(110, 98, 80, 0.05);
+  /* 阻止 iOS 橡皮筋效果引发意外横向位移 */
+  overscroll-behavior: contain;
 }
 
 button {

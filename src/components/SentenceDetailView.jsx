@@ -135,6 +135,7 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
             separator=" + "
             tokens={sentence.segmented && sentence.segmented.length ? sentence.segmented : undefined}
             onWordClick={handleWordTap}
+            showMeanings
             style={{ fontSize: 17, lineHeight: 1.7, color: 'var(--c-p800)' }}
           />
         </Card>

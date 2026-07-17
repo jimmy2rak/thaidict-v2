@@ -29,6 +29,7 @@ import WordBubble from './WordBubble.jsx'
  *   lookup    : (word)=>Promise<string[]|null>  查词函数，默认项目内置 getWordMeanings
  *   onWordClick: (word)=>void  额外点击回调（如同时打开详情页）
  *   className / style : 透传到根节点
+ *   showMeanings: boolean  是否在每个分好的词后显示（中文释义）括号，默认 false
  */
 export default function ThaiSentence({
   text = '',
@@ -39,6 +40,7 @@ export default function ThaiSentence({
   style = {},
   onWordClick,
   tokens: presetTokens,
+  showMeanings = false,
 }) {
   const [tokens, setTokens] = useState([])
   const [loading, setLoading] = useState(type !== 'word')
@@ -161,6 +163,7 @@ export default function ThaiSentence({
                 }}
               >
                 {t.text}
+                {showMeanings && t.meaning ? <span style={{ fontFamily: 'var(--zh-font)', fontSize: '0.75em', color: 'var(--c-p500)', marginLeft: 1 }}>（{t.meaning}）</span> : null}
               </u>
             ) : (
               <span style={{ color: t.type === 'punct' ? 'var(--c-p700)' : 'var(--c-p800)' }}>

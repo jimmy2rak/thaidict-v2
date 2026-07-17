@@ -134,7 +134,7 @@ export default function LoginPage({ onForgot }) {
   }
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: '36px 24px 24px', display: 'flex', flexDirection: 'column' }}>
+    <div className="scroll-y" style={{ flex: 1, minHeight: 0, padding: '16px 24px 24px', display: 'flex', flexDirection: 'column' }}>
       {/* 左上角品牌文字 + 右上角 GitHub 小猫图标 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div style={{ textAlign: 'left' }}>

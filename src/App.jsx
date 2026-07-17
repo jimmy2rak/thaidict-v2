@@ -104,7 +104,7 @@ export default function App() {
 
   if (!app.isLoggedIn) {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, background: 'var(--c-bg)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, overflow: 'hidden', background: 'var(--c-bg)' }}>
         {app.showReset ? (
           <ResetPasswordPage onBack={() => app.setShowReset(false)} />
         ) : (
