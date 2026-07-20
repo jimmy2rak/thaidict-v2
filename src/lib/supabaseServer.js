@@ -50,3 +50,37 @@ export async function mintSessionByEmail(supabase, email) {
   }
   return { access_token, refresh_token }
 }
+
+// 确保邮箱用户存在并确认，再签发 Supabase 会话。供 verify-otp / magic-login 复用。
+// 不依赖 Supabase 的 Email 开关：用户用 admin API 创建/确认，会话用 mintSessionByEmail 兑换。
+export async function ensureUserAndMintSession(supabase, email) {
+  let userId = null
+  try {
+    const { data: list, error: listErr } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+    if (listErr) throw listErr
+    const existing = list?.users?.find((u) => u.email === email)
+    if (existing) {
+      const { error: updErr } = await supabase.auth.admin.updateUserById(existing.id, {
+        email_confirm: true,
+      })
+      if (updErr) throw updErr
+      userId = existing.id
+    } else {
+      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+        email,
+        email_confirm: true,
+      })
+      if (createErr) throw createErr
+      userId = created.user.id
+    }
+  } catch (e) {
+    console.error('[ensureUser] auth user error:', e)
+    throw new Error('用户创建/更新失败：' + (e.message || e))
+  }
+
+  const tokens = await mintSessionByEmail(supabase, email)
+  return {
+    userId,
+    session: { access_token: tokens.access_token, refresh_token: tokens.refresh_token },
+  }
+}

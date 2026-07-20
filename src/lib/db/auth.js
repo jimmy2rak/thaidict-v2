@@ -82,20 +82,8 @@ export async function signInWithOAuth(provider) {
 }
 
 export async function sendMagicLink(email) {
-  if (!isSupabaseConfigured) {
-    return { data: { sent: true }, error: null }
-  }
-  try {
-    const res = await fetch('/api/send-magic-link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    })
-    const json = await res.json()
-    return res.ok ? { data: json.data, error: null } : { data: null, error: json.error }
-  } catch (e) {
-    return { data: null, error: e.message }
-  }
+  // 与 sendOtp 共用同一封「验证码 + 自建魔法链接」邮件，统一走 /api/send-otp。
+  return sendOtp(email, 'login')
 }
 
 export async function signOut() {
@@ -169,6 +157,34 @@ export async function verifyBrevoOtp(email, code, purpose) {
     if (!res.ok) return { data: null, error: json.error }
     // 后端已验证 OTP 并直接签发会话（access_token / refresh_token），
     // 前端用 setSession 落地，绕开 signInWithPassword（不受 Email 开关限制）。
+    const { session } = json.data || {}
+    if (!session?.access_token || !session?.refresh_token) {
+      return { data: null, error: '服务端未返回登录会话' }
+    }
+    const { data: setData, error: setErr } = await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    })
+    if (setErr) return { data: null, error: setErr.message }
+    return { data: { session: setData.session, user: setData.user }, error: null }
+  } catch (e) {
+    return { data: null, error: e.message }
+  }
+}
+
+// 自建魔法链接登录：用邮件里的 magic_token 兑换会话（绕开 Supabase 托管 action_link / Email 开关）。
+export async function verifyMagicToken(token) {
+  if (!isSupabaseConfigured) {
+    return { data: { session: MOCK_SESSION, user: MOCK_USER }, error: null }
+  }
+  try {
+    const res = await fetch('/api/magic-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+    const json = await res.json()
+    if (!res.ok) return { data: null, error: json.error }
     const { session } = json.data || {}
     if (!session?.access_token || !session?.refresh_token) {
       return { data: null, error: '服务端未返回登录会话' }

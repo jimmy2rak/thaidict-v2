@@ -18,6 +18,7 @@ import {
   saveSettingsCache,
   getUserRole,
   getActiveAiApi,
+  verifyMagicToken,
 } from '../lib/db/index.js'
 import { callAiProxy } from '../lib/ai-proxy.js'
 import { transformWordData, transformCommunityWord } from '../lib/utils.js'
@@ -123,6 +124,16 @@ export function AppProvider({ children }) {
           if (code) {
             const { data, error } = await supabase.auth.exchangeCodeForSession(code)
             if (error) console.error('[auth callback pkce]', error)
+            if (data?.session) setSession(data.session)
+            window.history.replaceState({}, '', window.location.pathname)
+            setLoading(false)
+            return
+          }
+          // 自建魔法链接登录：邮件链接形如 /?magic_token=...（绕开 Supabase 托管 action_link / Email 开关）
+          const magicToken = search.get('magic_token')
+          if (magicToken) {
+            const { data, error } = await verifyMagicToken(magicToken)
+            if (error) console.error('[magic-login]', error)
             if (data?.session) setSession(data.session)
             window.history.replaceState({}, '', window.location.pathname)
             setLoading(false)

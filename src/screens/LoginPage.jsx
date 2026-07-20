@@ -117,7 +117,7 @@ export default function LoginPage({ onForgot }) {
     const res = await sendMagicLink(email)
     setLoading(false)
     if (res?.error) app.toast('发送失败：' + res.error)
-    else app.toast('登录链接已发送到邮箱（经 Brevo）')
+    else app.toast('登录邮件已发送（含验证码与一键登录链接）')
   }
 
   const oauthBtn = {

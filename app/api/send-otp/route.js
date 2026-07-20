@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomBytes } from 'crypto'
 import { getServerSupabase } from '@/lib/supabaseServer'
 import { sendBrevoEmail } from '@/lib/brevo'
 
@@ -38,6 +39,7 @@ export async function POST(req) {
       hasSender: !!process.env.BREVO_SENDER_EMAIL,
       hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasSiteUrl: !!process.env.NEXT_PUBLIC_SITE_URL,
     })
     console.log(`[send-otp] start email=${email} purpose=${purpose}`)
 
@@ -47,7 +49,12 @@ export async function POST(req) {
       return fail('服务端未配置 Supabase')
     }
 
-    // 限频检查改为「后台触发、不阻塞主流程」，避免多一次 Supabase 往返叠加延迟。
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '')
+    if (!siteUrl) {
+      console.error('[send-otp] NEXT_PUBLIC_SITE_URL 未配置，魔法链接无法生成')
+    }
+
+    // 限频检查改为「后台触发、不阻塞主流程」
     supabase
       .rpc('check_otp_rate_limit', { p_email: email })
       .then(({ data }) => {
@@ -56,31 +63,46 @@ export async function POST(req) {
       .catch(() => {})
 
     const code = String(Math.floor(100000 + Math.random() * 900000))
+    const token = randomBytes(24).toString('hex') // 48 位十六进制魔法令牌
     const expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    const magicLink = siteUrl ? `${siteUrl}/?magic_token=${token}` : ''
 
-    // 关键优化：写库 + 发邮件并行执行，总耗时 = max(写库, 发信)，避免串行超过 10s 被掐断。
-    // insert 失败时 Supabase 返回 {error} 而非 reject，故需单独检查结果；Brevo 用 .catch 捕获错误对象。
+    // 写库 + 发邮件并行执行，总耗时 = max(写库, 发信)
     try {
       console.log('[send-otp] 并行：写库 + 发 Brevo')
       const [insRes, brevoOutcome] = await Promise.all([
         withTimeout(
           supabase
-            .from('otp_codes')
-            .insert({ email, code, purpose, type: 'email', expires_at }),
+            .from('verification_tokens')
+            .delete()
+            .eq('email', email)
+            .is('used_at', null)
+            .then(() =>
+              supabase
+                .from('verification_tokens')
+                .insert({ email, code, token, purpose, expires_at })
+            ),
           4000,
-          'otp_codes 写入'
+          'verification_tokens 写入'
         ),
         withTimeout(
           sendBrevoEmail({
             to: email,
-            subject: '中泰词典 · 邮箱验证码',
+            subject: '中泰词典 · 邮箱登录验证码',
             html:
-              '<div style="font-family:system-ui,sans-serif;max-width:420px;margin:0 auto;padding:24px;background:#F8F5EF;border-radius:16px">' +
-              '<h2 style="color:#A68A5B;margin:0 0 12px">中泰词典</h2>' +
-              '<p style="color:#433B32;margin:0 0 8px">你的验证码是：</p>' +
-              `<p style="font-size:28px;font-weight:700;letter-spacing:4px;color:#433B32;margin:0">${code}</p>` +
-              '<p style="color:#6E8CA0;margin:12px 0 0">10 分钟内有效，请勿泄露给他人。</p></div>',
-            text: `你的验证码是：${code}（10 分钟内有效）`,
+              '<div style="font-family:system-ui,-apple-system,sans-serif;max-width:420px;margin:0 auto;padding:28px;background:#F8F5EF;border-radius:18px;border:1px solid #ECE3D2">' +
+              '<h2 style="color:#A68A5B;margin:0 0 6px;font-size:20px">中泰词典</h2>' +
+              '<p style="color:#6E8CA0;margin:0 0 20px;font-size:13px">邮箱登录验证码</p>' +
+              '<p style="color:#433B32;margin:0 0 8px;font-size:14px">你的验证码是：</p>' +
+              `<p style="font-size:30px;font-weight:700;letter-spacing:6px;color:#433B32;margin:0 0 20px;font-family:monospace">${code}</p>` +
+              (magicLink
+                ? '<p style="color:#433B32;margin:0 0 10px;font-size:14px">或点击下方按钮直接登录：</p>' +
+                  `<a href="${magicLink}" style="display:inline-block;padding:12px 22px;background:#A68A5B;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">一键登录</a>`
+                : '') +
+              '<p style="color:#6E8CA0;margin:18px 0 0;font-size:12px">验证码 10 分钟内有效，请勿泄露给他人。若非本人操作请忽略。</p></div>',
+            text: magicLink
+              ? `你的中泰词典登录验证码是：${code}（10 分钟内有效）。\n或点击链接直接登录：${magicLink}`
+              : `你的中泰词典登录验证码是：${code}（10 分钟内有效）。`,
           }),
           8000,
           'Brevo 发送'

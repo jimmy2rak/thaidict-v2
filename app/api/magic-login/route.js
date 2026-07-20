@@ -4,33 +4,29 @@ import { getServerSupabase, ensureUserAndMintSession } from '@/lib/supabaseServe
 export const runtime = 'nodejs'
 
 export async function POST(req) {
-  let email, code, purpose
+  let token
   try {
-    ({ email, code, purpose } = await req.json())
+    ({ token } = await req.json())
   } catch {
     return NextResponse.json({ error: '请求体格式错误' }, { status: 400 })
   }
-  purpose = purpose || 'login'
-  if (!email || !code) return NextResponse.json({ error: '参数缺失' }, { status: 400 })
+  if (!token) return NextResponse.json({ error: '缺少令牌' }, { status: 400 })
 
   const supabase = getServerSupabase()
   if (!supabase) return NextResponse.json({ error: '服务端未配置 Supabase' }, { status: 500 })
 
-  // 1. 验证 OTP（只取最新一条未使用且未过期的）
+  // 1. 按魔法令牌查找（未使用且未过期）
   const { data: rows, error } = await supabase
     .from('verification_tokens')
     .select('*')
-    .eq('email', email)
-    .eq('purpose', purpose)
+    .eq('token', token)
     .is('used_at', null)
-    .order('created_at', { ascending: false })
     .limit(1)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const rec = rows?.[0]
-  if (!rec) return NextResponse.json({ error: '验证码不存在或已过期' }, { status: 400 })
-  if (new Date(rec.expires_at) < new Date()) return NextResponse.json({ error: '验证码已过期' }, { status: 400 })
-  if (rec.code !== String(code)) return NextResponse.json({ error: '验证码错误' }, { status: 400 })
+  if (!rec) return NextResponse.json({ error: '登录链接无效或已使用' }, { status: 400 })
+  if (new Date(rec.expires_at) < new Date()) return NextResponse.json({ error: '登录链接已过期' }, { status: 400 })
 
   // 2. 标记已使用（防重放）
   await supabase.from('verification_tokens').update({ used_at: new Date().toISOString() }).eq('id', rec.id)
@@ -38,13 +34,13 @@ export async function POST(req) {
   // 3. 创建/确认用户并签发会话（绕开 Email 开关）
   let result
   try {
-    result = await ensureUserAndMintSession(supabase, email)
+    result = await ensureUserAndMintSession(supabase, rec.email)
   } catch (e) {
-    console.error('[verify-otp] mint session error:', e)
+    console.error('[magic-login] mint session error:', e)
     return NextResponse.json({ error: '签发会话失败：' + (e.message || e) }, { status: 500 })
   }
 
   return NextResponse.json({
-    data: { email, user_id: result.userId, session: result.session },
+    data: { email: rec.email, user_id: result.userId, session: result.session },
   })
 }
