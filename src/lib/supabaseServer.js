@@ -37,7 +37,9 @@ export async function mintSessionByEmail(supabase, email) {
       apikey: anonKey,
       Authorization: `Bearer ${anonKey}`,
     },
-    body: JSON.stringify({ token: hashedToken, type: 'magiclink', email }),
+    // 注意：magiclink 的 verify 端点字段名为 token_hash（非 token），且【不能】带 email，
+    // 否则报 "Only the token_hash and type should be provided" / "Token has expired or is invalid"。
+    body: JSON.stringify({ token_hash: hashedToken, type: 'magiclink' }),
   })
   const verifyJson = await verifyRes.json().catch(() => ({}))
   if (!verifyRes.ok) {
