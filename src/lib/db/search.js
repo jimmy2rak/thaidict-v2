@@ -4,6 +4,62 @@ import { transformWordData, transformCommunityWord, safeQuery } from '../utils.j
 import { getGlobal, setGlobal } from '../mock/store.js'
 import { fillSensesSegments } from '../segmentExamples.js'
 
+// ---------- 搜索排序辅助 ----------
+function toTextArray(arr) {
+  if (!Array.isArray(arr)) return []
+  return arr.map((x) => {
+    if (typeof x === 'string') return x
+    if (x && typeof x === 'object') return x.word || x.zh || x.meaning || ''
+    return String(x)
+  })
+}
+
+function scoreSearchResult(row, q) {
+  const raw = q || ''
+  const lc = raw.toLowerCase()
+  const word = (row.word || '').toLowerCase()
+  let matchType = 5 // 兜底
+  if (word === lc) matchType = 0
+  else if (word.includes(lc)) matchType = 1
+  else if (
+    (row.senses || []).some((s) => (s.meaning || '').toLowerCase().includes(lc))
+  )
+    matchType = 2
+  else if (
+    (row.senses || []).some((s) =>
+      (s.examples || []).some((ex) => {
+        const text = ((ex.th || '') + ' ' + (ex.zh || '')).toLowerCase()
+        return text.includes(lc)
+      })
+    )
+  )
+    matchType = 3
+  else {
+    const synonyms = toTextArray(row.synonyms)
+    const antonyms = toTextArray(row.antonyms)
+    if (
+      synonyms.some((s) => s.toLowerCase().includes(lc)) ||
+      antonyms.some((s) => s.toLowerCase().includes(lc))
+    )
+      matchType = 4
+  }
+
+  const hasFreq = row.freq_ttc != null || row.freq_tnc != null || row.freq_phupha != null
+  const freq = hasFreq
+    ? Number(row.freq_ttc ?? row.freq_tnc ?? row.freq_phupha ?? 0)
+    : Number.NEGATIVE_INFINITY
+  return { freq, matchType }
+}
+
+function sortSearchResults(rows, q) {
+  return rows.slice().sort((a, b) => {
+    const sa = scoreSearchResult(a, q)
+    const sb = scoreSearchResult(b, q)
+    if (sa.freq !== sb.freq) return sb.freq - sa.freq
+    return sa.matchType - sb.matchType
+  })
+}
+
 // ---------- mock ----------
 function mockSearch(query) {
   const q = (query || '').trim()
@@ -18,7 +74,14 @@ function mockSearch(query) {
     (r) =>
       !exact.includes(r) &&
       !fuzzy.includes(r) &&
-      (r.senses || []).some((s) => (s.meaning || '').includes(q))
+      ((r.senses || []).some((s) => (s.meaning || '').toLowerCase().includes(lc)) ||
+        (r.senses || []).some((s) =>
+          (s.examples || []).some((ex) =>
+            ((ex.th || '') + ' ' + (ex.zh || '')).toLowerCase().includes(lc)
+          )
+        ) ||
+        toTextArray(r.synonyms).some((s) => s.toLowerCase().includes(lc)) ||
+        toTextArray(r.antonyms).some((s) => s.toLowerCase().includes(lc)))
   )
   const merged = [...exact, ...fuzzy, ...zh]
   const seen = new Set()
@@ -28,7 +91,7 @@ function mockSearch(query) {
     seen.add(r.word)
     out.push(r.source === 'community' ? transformCommunityWord(r) : transformWordData(r))
   }
-  return out
+  return sortSearchResults(out, q)
 }
 function mockGetWordByThai(word) {
   if (!word) return null
@@ -81,6 +144,8 @@ export async function searchWords(query) {
     seen.add(r.word)
     merged.push(r)
   }
+  // 排序：有词频按词频降序；无词频按搜索关联度（义项 > 例句 > 近反义词）
+  sortSearchResults(merged, q)
   return merged.map((r) => (r.origin === 'community' ? transformCommunityWord(r) : transformWordData(r)))
 }
 

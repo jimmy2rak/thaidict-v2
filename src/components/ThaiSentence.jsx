@@ -45,6 +45,7 @@ export default function ThaiSentence({
   const [tokens, setTokens] = useState([])
   const [loading, setLoading] = useState(type !== 'word')
   const [bubble, setBubble] = useState(null) // { word, x, y, status, meanings }
+  const [meaningMap, setMeaningMap] = useState({}) // 分词后预查的中文释义 { word: string[] }
   const triedServerRef = useRef('') // 已尝试服务端兜底过的文本，避免重复请求
   // 订阅字典版本：真实词库加载后自动重跑分词（避免缓存住「字典未加载」时的错误结果）
   const dictVersion = useSyncExternalStore(
@@ -105,6 +106,34 @@ export default function ThaiSentence({
     }
   }, [text, type, presetTokens, dictVersion])
 
+  // showMeanings 模式下：每个分词自动查词典，在划线词后括号显示中文释义（参考近反义词）
+  useEffect(() => {
+    if (!showMeanings || !tokens.length) return
+    const words = tokens
+      .filter((t) => t.type === 'word' && t.text && !t.meaning && !meaningMap[t.text])
+      .map((t) => t.text)
+    if (!words.length) return
+    let cancelled = false
+    Promise.all(
+      words.map(async (word) => {
+        try {
+          const meanings = await lookup(word)
+          return { word, meanings: Array.isArray(meanings) ? meanings : [] }
+        } catch {
+          return { word, meanings: [] }
+        }
+      })
+    ).then((results) => {
+      if (cancelled) return
+      const next = {}
+      for (const r of results) next[r.word] = r.meanings
+      setMeaningMap((prev) => ({ ...prev, ...next }))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [tokens, showMeanings, lookup, meaningMap])
+
   // 点击单词 → 仅弹气泡 + 查词（跳转详情交给气泡内的主词点击，避免一点就跳页）
   const handleWordClick = useCallback(
     (word, e) => {
@@ -163,7 +192,11 @@ export default function ThaiSentence({
                 }}
               >
                 {t.text}
-                {showMeanings && t.meaning ? <span style={{ fontFamily: 'var(--zh-font)', fontSize: '0.75em', color: 'var(--c-p500)', marginLeft: 1 }}>（{t.meaning}）</span> : null}
+                {showMeanings && (t.meaning || meaningMap[t.text]?.length) ? (
+                  <span style={{ fontFamily: 'var(--zh-font)', fontSize: '0.75em', color: 'var(--c-p500)', marginLeft: 1 }}>
+                    （{t.meaning || meaningMap[t.text].slice(0, 3).join('；')}）
+                  </span>
+                ) : null}
               </u>
             ) : (
               <span style={{ color: t.type === 'punct' ? 'var(--c-p700)' : 'var(--c-p800)' }}>
