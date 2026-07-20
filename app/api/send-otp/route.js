@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { getServerSupabase } from '@/lib/supabaseServer'
 import { sendBrevoEmail } from '@/lib/brevo'
+import { renderEmail } from '@/lib/emailTemplate'
 
 export const runtime = 'nodejs'
 // Vercel Hobby 函数默认上限 10s；显式声明，避免被平台更早掐断。
@@ -89,20 +90,24 @@ export async function POST(req) {
           sendBrevoEmail({
             to: email,
             subject: '中泰词典 · 邮箱登录验证码',
-            html:
-              '<div style="font-family:system-ui,-apple-system,sans-serif;max-width:420px;margin:0 auto;padding:28px;background:#F8F5EF;border-radius:18px;border:1px solid #ECE3D2">' +
-              '<h2 style="color:#A68A5B;margin:0 0 6px;font-size:20px">中泰词典</h2>' +
-              '<p style="color:#6E8CA0;margin:0 0 20px;font-size:13px">邮箱登录验证码</p>' +
-              '<p style="color:#433B32;margin:0 0 8px;font-size:14px">你的验证码是：</p>' +
-              `<p style="font-size:30px;font-weight:700;letter-spacing:6px;color:#433B32;margin:0 0 20px;font-family:monospace">${code}</p>` +
-              (magicLink
-                ? '<p style="color:#433B32;margin:0 0 10px;font-size:14px">或点击下方按钮直接登录：</p>' +
-                  `<a href="${magicLink}" style="display:inline-block;padding:12px 22px;background:#A68A5B;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">一键登录</a>`
-                : '') +
-              '<p style="color:#6E8CA0;margin:18px 0 0;font-size:12px">验证码 10 分钟内有效，请勿泄露给他人。若非本人操作请忽略。</p></div>',
-            text: magicLink
-              ? `你的中泰词典登录验证码是：${code}（10 分钟内有效）。\n或点击链接直接登录：${magicLink}`
-              : `你的中泰词典登录验证码是：${code}（10 分钟内有效）。`,
+            ...renderEmail({
+              heading: '中泰智能学习者词典登录验证',
+              introHtml:
+                '<p class="content">สวัสดี. 欢迎使用 ThaiDict 词典项目，请通过下方方式完成登录。</p>',
+              code,
+              codeLabel: '登录校验码（10 分钟有效）',
+              primaryAction: magicLink
+                ? { text: '或使用 Magic Link 一键登录', href: magicLink }
+                : null,
+              bottomTips:
+                '链接仅单次可用，泄露请及时修改账号访问密钥。<br/>' +
+                (magicLink
+                  ? '一键登录按钮失效时，请复制链接访问：<span class="plain-link">' +
+                    magicLink +
+                    '</span><br/>'
+                  : '') +
+                '验证码十分钟内有效，超时需重新发送验证邮件；非本人操作可忽略。',
+            }),
           }),
           8000,
           'Brevo 发送'

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSupabase } from '@/lib/supabaseServer'
 import { sendBrevoEmail } from '@/lib/brevo'
+import { renderEmail } from '@/lib/emailTemplate'
 import { getTodayCST } from '@/lib/utils'
 import { typeLabels } from '@/lib/taskTypes'
 
@@ -76,17 +77,13 @@ export async function POST(req) {
     : '太棒了！今天的学习任务已全部完成 🎉'
 
   const subject = `词笺 · 今日学习提醒（${today}）`
-  const html = `
-    <div style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#433B32;max-width:480px;margin:0 auto;padding:24px;background:#FEFDFB;border-radius:16px;">
-      <h2 style="color:#A68A5B;margin-top:0;">今日学习提醒</h2>
-      <p>你好，${username}！</p>
-      <p>以下是今天（${today}）尚未打卡的学习任务：</p>
-      ${taskListHtml}
-      <p style="margin-top:20px;color:#8FA98C;">坚持就是胜利，快来词笺完成今日学习吧！</p>
-      <p><a href="https://thaidict.182183.xyz" style="color:#6E8CA0;text-decoration:none;font-weight:600;">👉 打开词笺</a></p>
-    </div>
-  `
-  const text = `今日学习提醒\n\n你好，${username}！\n以下是今天（${today}）尚未打卡的学习任务：\n${taskListText}\n\n坚持就是胜利，快来词笺完成今日学习吧！\nhttps://thaidict.182183.xyz`
+  const { html, text } = renderEmail({
+    heading: '今日学习提醒',
+    introHtml: `<p class="content">你好，${username}！以下是今天（${today}）尚未打卡的学习任务：</p>`,
+    bodyHtml: taskListHtml,
+    primaryAction: { text: '👉 打开词笺', href: 'https://thaidict.182183.xyz' },
+    bottomTips: '坚持就是胜利，快来词笺完成今日学习吧！',
+  })
 
   try {
     await sendBrevoEmail({ to: email, subject, html, text })
