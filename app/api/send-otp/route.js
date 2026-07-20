@@ -17,9 +17,17 @@ export async function POST(req) {
   const supabase = getServerSupabase()
   if (!supabase) return NextResponse.json({ error: '服务端未配置 Supabase' }, { status: 500 })
 
-  // 60 秒限频（check_otp_rate_limit RPC）
-  const { data: limited } = await supabase.rpc('check_otp_rate_limit', { p_email: email })
-  if (limited) return NextResponse.json({ error: '发送过于频繁，请 60 秒后再试' }, { status: 429 })
+  // 60 秒限频：check_otp_rate_limit 返回 true = 「60 秒内无发送记录，可以发」
+  // ⚠️ 之前写成 if (limited) return 429，但该函数返回的是「可以发」，导致首条请求被误判限频、
+  //    永远 429、Brevo 邮件永远发不出。改为判断「不允许才拦截」。
+  let allowed = true
+  try {
+    const { data } = await supabase.rpc('check_otp_rate_limit', { p_email: email })
+    allowed = !!data
+  } catch {
+    allowed = true // 限频函数缺失时放行，避免硬失败阻断登录/注册
+  }
+  if (!allowed) return NextResponse.json({ error: '发送过于频繁，请 60 秒后再试' }, { status: 429 })
 
   const code = String(Math.floor(100000 + Math.random() * 900000))
   const expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString()
