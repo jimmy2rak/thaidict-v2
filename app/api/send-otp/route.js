@@ -49,6 +49,7 @@ export async function POST(req) {
       text: `你的验证码是：${code}（10 分钟内有效）`,
     })
   } catch (e) {
+    console.error('[send-otp] Brevo 发送失败:', e)
     return NextResponse.json({ error: '邮件发送失败：' + e.message }, { status: 502 })
   }
   return NextResponse.json({ data: { sent: true } })
