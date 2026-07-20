@@ -34,24 +34,24 @@ body {
 }
 h2 {
   color: #7c5c36;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 500;
-  margin: 0 0 16px;
+  margin: 0 0 14px;
 }
 .content {
   color: #6d563b;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.8;
 }
 .code-wrap {
   background: #f3eee3;
-  padding: 24px 0;
+  padding: 20px 0;
   text-align: center;
-  margin: 30px 0;
+  margin: 26px 0;
 }
 .auth-code {
-  font-size: 36px;
-  letter-spacing: 10px;
+  font-size: 30px;
+  letter-spacing: 8px;
   color: #916c3c;
   font-weight: bold;
 }
@@ -61,14 +61,14 @@ h2 {
   background: #916c3c;
   color: #fff;
   text-decoration: none;
-  padding: 14px;
+  padding: 12px;
   border-radius: 2px;
-  font-size: 16px;
-  margin: 26px 0;
+  font-size: 14px;
+  margin: 22px 0;
 }
 .bottom-tips {
-  margin-top: 34px;
-  padding-top: 22px;
+  margin-top: 30px;
+  padding-top: 20px;
   border-top: 1px solid #e9e2d5;
   color: #947c5c;
   font-size: 13px;
@@ -82,7 +82,7 @@ h2 {
   font-family: "Sriracha", "Noto Serif SC", serif;
 }
 .word-title {
-  font-size: 26px;
+  font-size: 22px;
   letter-spacing: 1px;
   color: #916c3c;
   font-weight: 700;
@@ -127,7 +127,7 @@ export function renderEmail(opts = {}) {
 
   const codeBlock = code
     ? `<div class="code-wrap">
-         <p style="margin:0 0 10px;color:#8a6e4b;">${codeLabel}</p>
+         <p style="margin:0 0 10px;color:#8a6e4b;font-size:14px;">${codeLabel}</p>
          <div class="auth-code">${code}</div>
        </div>`
     : ''

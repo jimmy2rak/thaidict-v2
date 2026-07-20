@@ -7,7 +7,6 @@ import {
   signInWithEmail,
   signUpWithEmail,
   signInWithOAuth,
-  sendMagicLink,
   sendOtp,
   verifyBrevoOtp,
 } from '../lib/db/index.js'
@@ -41,7 +40,6 @@ const GITHUB_REPO = 'https://github.com/jimmy2rak/thaidict-v2'
 export default function LoginPage({ onForgot }) {
   const app = useApp()
   const [method, setMethod] = useState('password') // 'password' | 'otp'
-  const [otpKind, setOtpKind] = useState('code') // 'code' | 'link'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -111,14 +109,6 @@ export default function LoginPage({ onForgot }) {
     if (res?.error) app.toast('验证失败：' + res.error)
     else if (res?.data?.session) app.setSession(res.data.session)
   }
-  const onMagicLink = async () => {
-    if (!email) return app.toast('请输入邮箱')
-    setLoading(true)
-    const res = await sendMagicLink(email)
-    setLoading(false)
-    if (res?.error) app.toast('发送失败：' + res.error)
-    else app.toast('登录邮件已发送（含验证码与一键登录链接）')
-  }
 
   const oauthBtn = {
     width: 52,
@@ -154,7 +144,7 @@ export default function LoginPage({ onForgot }) {
 
       {/* Logo 完整展示、放大居中 */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-        <MainLogo size={190} />
+        <MainLogo size={150} />
       </div>
 
       {/* Google / GitHub 圆形按钮：账号登录上方，作为首选 */}
@@ -175,14 +165,14 @@ export default function LoginPage({ onForgot }) {
       </div>
 
       <Card style={{ marginBottom: 14 }}>
-        {/* 切换 Tab：密码登录 / 验证码·链接登录 */}
+        {/* 切换 Tab：密码登录 / 验证码·链接登录（分段控件，选中态为内缩白色圆角块） */}
         <div
           style={{
             display: 'flex',
-            border: '1px solid var(--c-p200)',
-            borderRadius: 12,
-            overflow: 'hidden',
+            gap: 6,
             background: 'var(--c-p100)',
+            borderRadius: 14,
+            padding: 6,
             marginBottom: 20,
           }}
         >
@@ -195,14 +185,16 @@ export default function LoginPage({ onForgot }) {
               onClick={() => { setMethod(m.key); setError(''); setOtpSent(false) }}
               style={{
                 flex: 1,
-                padding: '10px 0',
-                fontSize: 14,
+                padding: '11px 0',
+                fontSize: 15,
                 fontWeight: 600,
+                borderRadius: 10,
                 border: 'none',
                 background: method === m.key ? 'var(--c-surface)' : 'transparent',
                 color: method === m.key ? 'var(--c-p800)' : 'var(--c-p500)',
                 cursor: 'pointer',
-                transition: 'background 0.15s ease',
+                boxShadow: method === m.key ? '0 1px 3px rgba(112,79,43,0.12)' : 'none',
+                transition: 'background 0.15s ease, box-shadow 0.15s ease',
               }}
             >
               {m.label}
@@ -244,31 +236,6 @@ export default function LoginPage({ onForgot }) {
           </>
         ) : (
           <>
-            {/* 验证码 / 链接 子切换 */}
-            <div style={{ display: 'inline-flex', gap: 8, marginBottom: 14 }}>
-              {[
-                { key: 'code', label: '邮箱验证码' },
-                { key: 'link', label: '邮箱链接' },
-              ].map((k) => (
-                <button
-                  key={k.key}
-                  onClick={() => { setOtpKind(k.key); setOtpSent(false) }}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    borderRadius: 8,
-                    border: '1px solid ' + (otpKind === k.key ? 'var(--c-primary)' : 'var(--c-p200)'),
-                    background: otpKind === k.key ? 'color-mix(in srgb, var(--c-primary) 10%, transparent)' : 'var(--c-surface)',
-                    color: otpKind === k.key ? 'var(--c-primary)' : 'var(--c-p500)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {k.label}
-                </button>
-              ))}
-            </div>
-
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 14, color: 'var(--c-p700)' }}>
                 <Mail size={16} color="var(--c-p500)" />
@@ -282,43 +249,38 @@ export default function LoginPage({ onForgot }) {
               />
             </div>
 
-            {otpKind === 'code' ? (
-              <>
-                {!otpSent ? (
-                  <Btn onClick={onSendOtp} disabled={loading} style={{ width: '100%' }}>
-                    {loading ? <Spinner size={16} color="#fff" /> : (<><Send size={15} /> 发送验证码</>)}
-                  </Btn>
-                ) : (
-                  <>
-                    <div style={{ marginBottom: 14 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 14, color: 'var(--c-p700)' }}>
-                        <KeyRound size={16} color="var(--c-p500)" />
-                        <span>验证码</span>
-                      </div>
-                      <input
-                        style={inputStyle}
-                        placeholder="请输入 6 位验证码"
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value)}
-                      />
-                    </div>
-                    <Btn onClick={onVerifyOtp} disabled={loading} style={{ width: '100%' }}>
-                      {loading ? <Spinner size={16} color="#fff" /> : '验证并登录'}
-                    </Btn>
-                  </>
-                )}
-              </>
-            ) : (
-              <Btn onClick={onMagicLink} disabled={loading} style={{ width: '100%' }}>
-                {loading ? <Spinner size={16} color="#fff" /> : (<><Send size={15} /> 发送登录链接</>)}
+            {!otpSent ? (
+              <Btn onClick={onSendOtp} disabled={loading} style={{ width: '100%' }}>
+                {loading ? <Spinner size={16} color="#fff" /> : (<><Send size={15} /> 发送验证码 / 登录链接</>)}
               </Btn>
+            ) : (
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 14, color: 'var(--c-p700)' }}>
+                    <KeyRound size={16} color="var(--c-p500)" />
+                    <span>验证码</span>
+                  </div>
+                  <input
+                    style={inputStyle}
+                    placeholder="请输入 6 位验证码"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                  />
+                </div>
+                <Btn onClick={onVerifyOtp} disabled={loading} style={{ width: '100%' }}>
+                  {loading ? <Spinner size={16} color="#fff" /> : '验证并登录'}
+                </Btn>
+              </>
             )}
 
-            {otpKind === 'code' && otpSent && (
+            {otpSent && (
               <button onClick={() => setOtpSent(false)} style={{ marginTop: 12, fontSize: 12, color: 'var(--c-info)', background: 'none', border: 'none' }}>
-                <ArrowLeft size={12} /> 重新发送验证码
+                <ArrowLeft size={12} /> 重新发送验证码 / 链接
               </button>
             )}
+            <p style={{ fontSize: 12, color: 'var(--c-p400)', marginTop: 10, textAlign: 'center', lineHeight: 1.5 }}>
+              邮件已同时包含验证码与一键登录链接
+            </p>
           </>
         )}
       </Card>
