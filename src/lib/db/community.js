@@ -31,9 +31,27 @@ export async function saveCommunityWord(entry, userId, zhHint) {
     source: entry.source || 'community',
     submitted_by: userId || null,
   }
-  const { data, error } = await safeQuery(
-    supabase.from('community_words').upsert(row, { onConflict: 'word' }).select().single()
+  // ⚠️ 已有库 community_words 未必对 word 建唯一约束，upsert 的 onConflict:'word'
+  // 会报「no unique or exclusion constraint matching the ON CONFLICT specification」。
+  // 改为「先查后 insert / update」，不依赖唯一约束即可稳定写入社区贡献记录。
+  const { data: existing } = await safeQuery(
+    supabase.from('community_words').select('word').eq('word', row.word).maybeSingle()
   )
+  let data = null
+  let error = null
+  if (existing) {
+    const r = await safeQuery(
+      supabase.from('community_words').update(row).eq('word', row.word).select().single()
+    )
+    data = r.data
+    error = r.error
+  } else {
+    const r = await safeQuery(
+      supabase.from('community_words').insert(row).select().single()
+    )
+    data = r.data
+    error = r.error
+  }
   if (error) {
     console.error('[saveCommunityWord]', error.message)
     return { data: null, error: error.message }
