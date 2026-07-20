@@ -33,7 +33,7 @@ export async function POST(req) {
   const expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString()
   const { error: insErr } = await supabase
     .from('otp_codes')
-    .insert({ email, code, purpose, expires_at })
+    .insert({ email, code, purpose, type: 'email', expires_at })
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
 
   try {
