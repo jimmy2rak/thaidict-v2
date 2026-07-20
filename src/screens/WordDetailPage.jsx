@@ -319,6 +319,8 @@ const relStyle = (c) => ({
 })
 // 近反义词/学习者建议单词：查到释义时附加中文括号（多义用分号分隔），查不到则不显示括号（需求 #5）
 function RelWord({ word, color, meaning, onClick }) {
+  // 兼容 word 既可能是字符串也可能是对象（防御性）
+  const wordText = typeof word === 'string' ? word : (word && word.word ? String(word.word) : String(word))
   // 兼容 meaning 既可能是数组（来自 getWordMeanings）也可能是字符串（AI 生成的相关词直接带中文释义），
   // 统一规整为数组后再 join，避免「i.join is not a function」。
   const meaningArr = Array.isArray(meaning) ? meaning : (meaning ? [meaning] : [])
@@ -337,7 +339,7 @@ function RelWord({ word, color, meaning, onClick }) {
         gap: 4,
       }}
     >
-      <ThaiSentence text={word} style={{ fontFamily: 'var(--th-font)', fontSize: 13 }} />
+      <ThaiSentence text={wordText} style={{ fontFamily: 'var(--th-font)', fontSize: 13 }} />
       {meaningArr.length > 0 && (
         <span style={{ fontFamily: 'var(--zh-font)', fontSize: 12 }}>（{meaningArr.join('；')}）</span>
       )}

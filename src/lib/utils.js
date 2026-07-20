@@ -83,9 +83,22 @@ export function transformCommunityWord(row) {
 function normalizeRel(arr) {
   if (!Array.isArray(arr)) return []
   return arr.map((x) => {
-    if (typeof x === 'string') return { word: x, meaning: '' }
-    // AI 返回可能用 meaning 或 zh 承载中文
-    if (x && x.word) return { word: x.word, meaning: x.meaning || x.zh || '' }
+    if (typeof x === 'string') {
+      // 兼容 synonyms 被 JSON.stringify 后存成字符串的情况（如 {"zh":"...","word":"..."}）
+      try {
+        const parsed = JSON.parse(x)
+        if (parsed && typeof parsed === 'object' && parsed.word) {
+          return { word: String(parsed.word), meaning: parsed.zh || parsed.meaning || '' }
+        }
+      } catch {
+        // 不是 JSON，作为普通泰语词返回
+      }
+      return { word: x, meaning: '' }
+    }
+    if (x && typeof x === 'object') {
+      // 兼容 AI 返回的 { word, zh } 与 { word, meaning }
+      return { word: String(x.word || ''), meaning: x.zh || x.meaning || '' }
+    }
     return { word: String(x), meaning: '' }
   })
 }
