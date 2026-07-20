@@ -36,7 +36,7 @@ export async function POST(req) {
   }
 
   try {
-    await sendBrevoEmail({
+    const brevoRes = await sendBrevoEmail({
       to: email,
       subject: '中泰词典 · 邮箱登录链接',
       html:
@@ -47,7 +47,9 @@ export async function POST(req) {
         '<p style="color:#6E8CA0;margin:12px 0 0">链接 10 分钟内有效，请勿泄露给他人。</p></div>',
       text: `点击以下链接登录中泰词典：${actionLink}（10 分钟内有效）`,
     })
+    console.log('[send-magic-link] Brevo 已接受 messageId=', brevoRes?.messageId || '(无)')
   } catch (e) {
+    console.error('[send-magic-link] Brevo 失败:', e)
     return NextResponse.json({ error: '邮件发送失败：' + e.message }, { status: 502 })
   }
   return NextResponse.json({ data: { sent: true } })

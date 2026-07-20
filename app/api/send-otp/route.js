@@ -62,7 +62,7 @@ export async function POST(req) {
     // insert 失败时 Supabase 返回 {error} 而非 reject，故需单独检查结果；Brevo 用 .catch 捕获错误对象。
     try {
       console.log('[send-otp] 并行：写库 + 发 Brevo')
-      const [insRes, brevoErr] = await Promise.all([
+      const [insRes, brevoOutcome] = await Promise.all([
         withTimeout(
           supabase
             .from('otp_codes')
@@ -84,16 +84,19 @@ export async function POST(req) {
           }),
           8000,
           'Brevo 发送'
-        ).then(() => null).catch((e) => e),
+        )
+          .then((r) => ({ ok: true, res: r }))
+          .catch((e) => ({ ok: false, err: e })),
       ])
       if (insRes && insRes.error) {
         console.error('[send-otp] insert error:', insRes.error)
         return fail(insRes.error.message)
       }
-      if (brevoErr) {
-        console.error('[send-otp] Brevo 失败:', brevoErr)
-        return fail('邮件发送失败：' + brevoErr.message)
+      if (!brevoOutcome.ok) {
+        console.error('[send-otp] Brevo 失败:', brevoOutcome.err)
+        return fail('邮件发送失败：' + brevoOutcome.err.message)
       }
+      console.log('[send-otp] Brevo 已接受 messageId=', brevoOutcome.res?.messageId || '(无)')
       console.log('[send-otp] 写库 + Brevo 均完成')
     } catch (e) {
       console.error('[send-otp] 并行阶段超时/异常:', e)
