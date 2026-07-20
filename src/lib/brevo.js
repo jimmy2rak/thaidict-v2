@@ -18,8 +18,9 @@ export async function sendBrevoEmail({ to, subject, html, text }) {
         sender: { name: senderName, email: senderEmail },
         to: [{ email: to }],
         subject,
-        html: html || undefined,
-        text: text || undefined,
+        // ⚠️ Brevo v3 字段名是 htmlContent / textContent（不是 html / text）
+        htmlContent: html || undefined,
+        textContent: text || undefined,
       }),
     })
   } catch (netErr) {
