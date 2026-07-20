@@ -150,8 +150,9 @@ export async function searchWords(query) {
     merged.push(r)
   }
   // 排序：有词频按词频降序；无词频按搜索关联度（义项 > 例句 > 近反义词）
-  sortSearchResults(merged, q)
-  return merged.map((r) => (r.origin === 'community' ? transformCommunityWord(r) : transformWordData(r)))
+  // ⚠️ sortSearchResults 内部 slice+sort 返回【新数组】，必须接住返回值，否则排序被丢弃。
+  const sorted = sortSearchResults(merged, q)
+  return sorted.map((r) => (r.origin === 'community' ? transformCommunityWord(r) : transformWordData(r)))
 }
 
 export async function getWordByThai(word) {
