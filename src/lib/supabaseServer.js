@@ -37,7 +37,7 @@ export async function mintSessionByEmail(supabase, email) {
       apikey: anonKey,
       Authorization: `Bearer ${anonKey}`,
     },
-    body: JSON.stringify({ token: hashedToken, type: 'magiclink' }),
+    body: JSON.stringify({ token: hashedToken, type: 'magiclink', email }),
   })
   const verifyJson = await verifyRes.json().catch(() => ({}))
   if (!verifyRes.ok) {
