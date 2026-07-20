@@ -40,6 +40,7 @@ Next.js 14 App Router + React 18（JSX，非 TS）。当前本地 mock 阶段，
 - 静默无限重渲染：effect 依赖别放每次新对象（用 `useMemo` 稳定）。
 - 白屏 404：dev/build 共用 `.next` 会污染 → distDir 分离。
 - favicon 用 SVG 消除 `/favicon.ico` 404；viewport 已移除 `maximumScale`/`user-scalable`。
+- **词频排序坑**：`word_freqs` 表结构是 `{word, corpus, frequency}`，`corpus` 分 `tnc`/`ttc`/`phupha` 三种语料库（每词各一行）。前端（anon）能直接查该表（200）。`dictionary_full`/`dictionary_full_ext` 视图已把三语料库映射成 `freq_tnc`/`freq_ttc`/`freq_phupha` 三列（量纲不同：phupha 亿级、tnc 十万级、ttc 万级）。搜索按词频排序时**必须取三列 `Math.max`**，绝不可写 `freq_ttc ?? freq_tnc ?? freq_phupha`（会永远先取最小的 ttc 列，排序失真）；三列全 0/null 才视为「无词频」走匹配度排序。视图按 `freq_*` 排序无索引会 statement timeout，故排序放在前端内存做。
 
 ## 阶段进度
 阶段 1~3.6 ✅；阶段 4 ✅（A~G Bug 核对完成）；阶段 5 ✅（新中式奶油风格改造 + 补强：紧凑卡片、Tab 彩色、配色调鲜艳淡背景、学习中心打卡/调整计划、学习笔记联动）。

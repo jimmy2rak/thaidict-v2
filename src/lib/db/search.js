@@ -44,11 +44,16 @@ function scoreSearchResult(row, q) {
       matchType = 4
   }
 
-  const hasFreq = row.freq_ttc != null || row.freq_tnc != null || row.freq_phupha != null
-  const freq = hasFreq
-    ? Number(row.freq_ttc ?? row.freq_tnc ?? row.freq_phupha ?? 0)
-    : Number.NEGATIVE_INFINITY
-  return { freq, matchType }
+  // word_freqs 分 corpus 存词频，dictionary_full_ext 已映射到 freq_tnc/freq_ttc/freq_phupha 三列
+  // （量纲不同：phupha 亿级、tnc 十万级、ttc 万级）。
+  // ⚠️ 不能写 freq_ttc ?? freq_tnc ?? freq_phupha（会永远先取最小的 ttc 列，导致排序失真），
+  //    必须取三列【最大值】作为该词的综合词频。
+  const fTnc = Number(row.freq_tnc || 0)
+  const fTtc = Number(row.freq_ttc || 0)
+  const fPhu = Number(row.freq_phupha || 0)
+  const freq = Math.max(fTnc, fTtc, fPhu)
+  const sortFreq = freq > 0 ? freq : Number.NEGATIVE_INFINITY // 三列全为 0/null 视为无词频
+  return { freq: sortFreq, matchType }
 }
 
 function sortSearchResults(rows, q) {
