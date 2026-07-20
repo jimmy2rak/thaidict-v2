@@ -132,7 +132,10 @@ export async function sendOtp(email, purpose) {
         error: `服务端返回了非 JSON 响应（${res.status}）：${text.slice(0, 200)}`,
       }
     }
-    return res.ok ? { data: json.data, error: null } : { data: null, error: json.error }
+    // 路由统一返回 200 + { ok, error }，以兼容前置代理吞掉 4xx/5xx 响应体的情况。
+    if (json && json.ok === false) return { data: null, error: json.error }
+    if (!res.ok) return { data: null, error: json?.error || `请求失败（${res.status}）` }
+    return { data: json.data, error: null }
   } catch (e) {
     return { data: null, error: e.message }
   }
