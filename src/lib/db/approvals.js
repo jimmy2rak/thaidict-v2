@@ -99,3 +99,21 @@ export async function rejectApproval(id, reviewerId, reason) {
   }
   return data
 }
+
+/**
+ * 提交待审批后，异步通知所有有审阅权限的管理员（fire-and-forget）。
+ * 走服务端路由 /api/send-review-reminder，由其查询审阅者并发送邮件。
+ * 失败不影响主提交流程。
+ */
+export async function notifyReviewers({ type, payload, requestedBy } = {}) {
+  try {
+    fetch('/api/send-review-reminder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, payload, requestedBy }),
+      keepalive: true,
+    }).catch((e) => console.error('[notifyReviewers] fetch 失败:', e))
+  } catch (e) {
+    console.error('[notifyReviewers]', e)
+  }
+}

@@ -3,6 +3,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase.js'
 import {
   getWordByThai,
   createPendingApproval,
+  notifyReviewers,
   recordWordLookup,
   getBookmarks,
   getStreak,
@@ -407,6 +408,8 @@ export function AppProvider({ children }) {
       // 提交待审批：超管通过后写入 dictionary → dictionary_full，全局可查
       try {
         await createPendingApproval({ type: 'word', payload: { ...data, zh_hint: zhHint }, requestedBy: userId })
+        // 异步通知所有有审阅权限的管理员（fire-and-forget，不阻塞 UI）
+        notifyReviewers({ type: 'word', payload: { ...data, zh_hint: zhHint }, requestedBy: userId })
         toast('已生成，等待管理员审核后进入词典')
       } catch (e) {
         console.error('[createPendingApproval]', e)
