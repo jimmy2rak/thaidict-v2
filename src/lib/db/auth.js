@@ -46,7 +46,16 @@ export async function signUpWithEmail(email, password, username) {
     })
     const json = await res.json()
     if (!res.ok) return { data: null, error: json.error }
-    // 注册成功后自动登录
+    // 注册成功后自动登录：优先用服务端签发的会话；否则回退密码登录
+    const { session } = json.data || {}
+    if (session?.access_token && session?.refresh_token) {
+      const { data: setData, error: setErr } = await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      })
+      if (setErr) return { data: null, error: setErr.message }
+      return { data: setData, error: null }
+    }
     const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
     if (signInErr) return { data: null, error: signInErr.message }
     return { data: signInData, error: null }
@@ -158,15 +167,18 @@ export async function verifyBrevoOtp(email, code, purpose) {
     })
     const json = await res.json()
     if (!res.ok) return { data: null, error: json.error }
-    // 后端已验证 OTP 并创建/更新用户，返回临时密码；前端用密码登录换取真实 session。
-    const { password } = json.data || {}
-    if (!password) return { data: null, error: '服务端未返回登录凭据' }
-    const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    // 后端已验证 OTP 并直接签发会话（access_token / refresh_token），
+    // 前端用 setSession 落地，绕开 signInWithPassword（不受 Email 开关限制）。
+    const { session } = json.data || {}
+    if (!session?.access_token || !session?.refresh_token) {
+      return { data: null, error: '服务端未返回登录会话' }
+    }
+    const { data: setData, error: setErr } = await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
     })
-    if (signInErr) return { data: null, error: signInErr.message }
-    return { data: { session: signInData.session, user: signInData.user }, error: null }
+    if (setErr) return { data: null, error: setErr.message }
+    return { data: { session: setData.session, user: setData.user }, error: null }
   } catch (e) {
     return { data: null, error: e.message }
   }

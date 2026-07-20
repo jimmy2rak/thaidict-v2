@@ -1,25 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getServerSupabase } from '@/lib/supabaseServer'
+import { getServerSupabase, mintSessionByEmail } from '@/lib/supabaseServer'
 
 export const runtime = 'nodejs'
-
-// 临时密码长度
-const TEMP_PASSWORD_LEN = 32
-
-function generatePassword(len = TEMP_PASSWORD_LEN) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*-_=+'
-  let out = ''
-  const buf = new Uint8Array(len)
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(buf)
-  } else {
-    for (let i = 0; i < len; i++) buf[i] = Math.floor(Math.random() * 256)
-  }
-  for (let i = 0; i < len; i++) {
-    out += chars[buf[i] % chars.length]
-  }
-  return out
-}
 
 export async function POST(req) {
   let email, code, purpose
@@ -52,17 +34,14 @@ export async function POST(req) {
   // 2. 删除已使用的 OTP
   await supabase.from('otp_codes').delete().eq('id', rec.id)
 
-  // 3. 生成临时密码并创建/更新用户（邮箱自动确认，无需 Supabase 自带邮件验证）
-  const tempPassword = generatePassword()
+  // 3. 创建/更新用户（邮箱自动确认，无需 Supabase 自带邮件验证）
   let userId = null
   try {
-    // 先按邮箱查找已有用户（listUsers 最多拉 1000 条，对一般项目足够）
     const { data: list, error: listErr } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
     if (listErr) throw listErr
     const existing = list?.users?.find((u) => u.email === email)
     if (existing) {
       const { error: updErr } = await supabase.auth.admin.updateUserById(existing.id, {
-        password: tempPassword,
         email_confirm: true,
       })
       if (updErr) throw updErr
@@ -70,7 +49,6 @@ export async function POST(req) {
     } else {
       const { data: created, error: createErr } = await supabase.auth.admin.createUser({
         email,
-        password: tempPassword,
         email_confirm: true,
       })
       if (createErr) throw createErr
@@ -81,12 +59,18 @@ export async function POST(req) {
     return NextResponse.json({ error: '用户创建/更新失败：' + (e.message || e) }, { status: 500 })
   }
 
-  // 4. 返回临时密码，前端用 supabase.auth.signInWithPassword 换取真实 session
+  // 4. 服务端直接签发会话（绕开 signInWithPassword / Email 开关限制）
+  let session
+  try {
+    const tokens = await mintSessionByEmail(supabase, email)
+    session = { access_token: tokens.access_token, refresh_token: tokens.refresh_token }
+  } catch (e) {
+    console.error('[verify-otp] mint session error:', e)
+    return NextResponse.json({ error: '签发会话失败：' + (e.message || e) }, { status: 500 })
+  }
+
   return NextResponse.json({
-    data: {
-      email,
-      user_id: userId,
-      password: tempPassword,
-    },
+    data: { email, user_id: userId, session },
   })
 }
+
