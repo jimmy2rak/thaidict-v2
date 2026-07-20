@@ -13,6 +13,7 @@ import { speak } from '../utils/tts.js'
 import { Card, Badge, IconButton, SectionTitle } from './UIComponents.jsx'
 import ThaiSentence from './ThaiSentence.jsx'
 import SourceTag from './SourceTag.jsx'
+import CopyPopover from './CopyPopover.jsx'
 import { getSourceMeta } from '../lib/sourceMeta.js'
 
 /**
@@ -117,8 +118,9 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
               <IconButton onClick={onPlay} title="朗读"><Volume2 size={20} /></IconButton>
+              <CopyPopover text={sentence.thai} title="复制纯文本" />
               <IconButton onClick={toggleBookmark} active={bookmarked} title="收藏">
                 <Star size={20} fill={bookmarked ? 'var(--c-amber)' : 'none'} color={bookmarked ? 'var(--c-amber)' : 'var(--c-p600)'} />
               </IconButton>
@@ -183,10 +185,7 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
           </>
         )}
 
-        {/* 操作 */}
-        <button onClick={openFolder} style={actionBtn}>
-          <FolderPlus size={16} /> 加入文件夹
-        </button>
+        {/* 操作区已移除（加入文件夹），保留收藏入口（星标 → 弹句子夹选择） */}
       </div>
 
       {/* 文件夹选择弹层 */}
@@ -220,20 +219,4 @@ export default function SentenceDetailView({ sentence, onClose, title = '词语�
       )}
     </div>
   )
-}
-
-const actionBtn = {
-  width: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 6,
-  padding: '12px',
-  borderRadius: 12,
-  border: '1px solid var(--c-teal)',
-  color: 'var(--c-teal)',
-  background: 'transparent',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
 }

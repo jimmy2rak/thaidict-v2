@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, ArrowRight, Volume2, Star, FolderPlus, Layers, X, StickyNote } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Volume2, Star, FolderPlus, X } from 'lucide-react'
 import { useApp } from '../context/AppContext.jsx'
 import {
   addBookmark,
@@ -16,9 +16,8 @@ import { speak } from '../utils/tts.js'
 import { Card, Badge, IconButton, WordToken, Spinner } from '../components/UIComponents.jsx'
 import ThaiSentence from '../components/ThaiSentence.jsx'
 import SourceTag from '../components/SourceTag.jsx'
+import CopyPopover from '../components/CopyPopover.jsx'
 import { getSourceMeta } from '../lib/sourceMeta.js'
-import MorphologySection from './subsections/MorphologySection.jsx'
-import NoteEditorSection from './subsections/NoteEditorSection.jsx'
 
 export default function WordDetailPage({ word }) {
   const app = useApp()
@@ -49,8 +48,6 @@ export default function WordDetailPage({ word }) {
   const [showFolder, setShowFolder] = useState(false)
   const [folders, setFolders] = useState([])
   const [newFolder, setNewFolder] = useState('')
-  const [showMorph, setShowMorph] = useState(false)
-  const [showNote, setShowNote] = useState(false)
   const [meaningMap, setMeaningMap] = useState({})
   const [noteMap, setNoteMap] = useState({})
 
@@ -161,9 +158,12 @@ export default function WordDetailPage({ word }) {
                 ))}
               </div>
             </div>
-            <IconButton onClick={() => speak(data.word)} title="朗读" style={{ width: 44, height: 44 }}>
-              <Volume2 size={24} />
-            </IconButton>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+              <IconButton onClick={() => speak(data.word)} title="朗读" style={{ width: 44, height: 44 }}>
+                <Volume2 size={24} />
+              </IconButton>
+              <CopyPopover text={data.word} title="复制纯文本主词" buttonStyle={{ width: 44, height: 44 }} />
+            </div>
           </div>
         </Card>
 
@@ -276,12 +276,7 @@ export default function WordDetailPage({ word }) {
           </div>
         </Card>
 
-        {/* 操作 */}
-        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-          <button onClick={openFolder} style={actionBtn('var(--c-primary)')}><FolderPlus size={16} /> 加入文件夹</button>
-          <button onClick={() => setShowMorph(true)} style={actionBtn('var(--c-info)')}><Layers size={16} /> 词形分析</button>
-          <button onClick={() => setShowNote(true)} style={actionBtn('var(--c-rose)')}><StickyNote size={16} /> 笔记</button>
-        </div>
+        {/* 操作区已移除（加入文件夹/词形分析/笔记），保留收藏入口（顶栏星标） */}
       </div>
 
       {/* 文件夹选择弹层 */}
@@ -300,9 +295,6 @@ export default function WordDetailPage({ word }) {
           {folders.filter((f) => f.folder_type === 'word').length === 0 && <div style={{ color: 'var(--c-s500)', fontSize: 13 }}>暂无单词夹，先新建一个吧</div>}
         </Picker>
       )}
-
-      {showMorph && <MorphologySection word={word} row={row} onClose={() => setShowMorph(false)} />}
-      {showNote && <NoteEditorSection noteId={null} initialWord={word} onClose={() => setShowNote(false)} onSaved={() => setShowNote(false)} />}
     </div>
   )
 }
@@ -355,21 +347,6 @@ function MetaRow({ label, value }) {
     </div>
   )
 }
-const actionBtn = (c) => ({
-  flex: 1,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 6,
-  padding: '10px',
-  borderRadius: 12,
-  border: '1px solid ' + c,
-  color: c,
-  background: 'transparent',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
-})
 const pickerInput = {
   flex: 1,
   padding: '10px 12px',
