@@ -122,7 +122,16 @@ export async function sendOtp(email, purpose) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, purpose }),
     })
-    const json = await res.json()
+    let json
+    try {
+      json = await res.json()
+    } catch (parseErr) {
+      const text = await res.text().catch(() => '')
+      return {
+        data: null,
+        error: `服务端返回了非 JSON 响应（${res.status}）：${text.slice(0, 200)}`,
+      }
+    }
     return res.ok ? { data: json.data, error: null } : { data: null, error: json.error }
   } catch (e) {
     return { data: null, error: e.message }
